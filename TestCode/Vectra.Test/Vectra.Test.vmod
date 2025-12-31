@@ -1,0 +1,9 @@
+module Vectra.Test
+
+metadata {
+    type executable
+}
+
+sources {
+    src/**/*.vec
+}

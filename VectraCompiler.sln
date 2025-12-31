@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VectraCompiler", "VectraCompiler\VectraCompiler.csproj", "{B7CD3E7C-2C9C-4A36-A777-DCFEE4032DF2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VectraCompiler.AST", "VectraCompiler.AST\VectraCompiler.AST.csproj", "{99C427C7-D8D5-44D4-A442-607C7C031875}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VectraCompiler.Package", "VectraCompiler.Package\VectraCompiler.Package.csproj", "{6E4B0A77-C6F7-49BB-92B2-D94803F9503A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TestCode", "TestCode", "{B1FA93F0-D433-4E32-96E6-7F424AA8DB46}"
+	ProjectSection(SolutionItems) = preProject
+		TestCode\TestProject.vpkg = TestCode\TestProject.vpkg
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Vectra.Test", "Vectra.Test", "{CAC2B6F0-EE99-4762-98FC-8A008FE4ABD3}"
+	ProjectSection(SolutionItems) = preProject
+		TestCode\Vectra.Test\Vectra.Test.vmod = TestCode\Vectra.Test\Vectra.Test.vmod
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B1F05C8C-9F2A-4A23-A789-6DF963DB6CE9}"
+	ProjectSection(SolutionItems) = preProject
+		TestCode\Vectra.Test\src\TestSrc.vec = TestCode\Vectra.Test\src\TestSrc.vec
+		TestCode\Vectra.Test\src\TestSrc2.vec = TestCode\Vectra.Test\src\TestSrc2.vec
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B7CD3E7C-2C9C-4A36-A777-DCFEE4032DF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7CD3E7C-2C9C-4A36-A777-DCFEE4032DF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7CD3E7C-2C9C-4A36-A777-DCFEE4032DF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7CD3E7C-2C9C-4A36-A777-DCFEE4032DF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{99C427C7-D8D5-44D4-A442-607C7C031875}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{99C427C7-D8D5-44D4-A442-607C7C031875}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{99C427C7-D8D5-44D4-A442-607C7C031875}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{99C427C7-D8D5-44D4-A442-607C7C031875}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E4B0A77-C6F7-49BB-92B2-D94803F9503A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E4B0A77-C6F7-49BB-92B2-D94803F9503A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E4B0A77-C6F7-49BB-92B2-D94803F9503A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E4B0A77-C6F7-49BB-92B2-D94803F9503A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{CAC2B6F0-EE99-4762-98FC-8A008FE4ABD3} = {B1FA93F0-D433-4E32-96E6-7F424AA8DB46}
+		{B1F05C8C-9F2A-4A23-A789-6DF963DB6CE9} = {CAC2B6F0-EE99-4762-98FC-8A008FE4ABD3}
+	EndGlobalSection
+EndGlobal

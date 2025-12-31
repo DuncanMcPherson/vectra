@@ -1,0 +1,3 @@
+package Vectra.Test
+
+module Vectra.Test Vectra.Test/Vectra.Test.vmod

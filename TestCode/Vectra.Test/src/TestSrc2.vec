@@ -1,0 +1,6 @@
+space Vectra.Test;
+
+class Player {
+    Player(number age) {
+    }
+}
