@@ -10,9 +10,21 @@ public class VectraAstModule
 
     public void InsertSpace(SpaceDeclarationNode space)
     {
+        while (space.Subspaces.Count > 0)
+        {
+            space = space.Subspaces[0];
+        }
+
         var newParts = space.QualifiedName.Split('.');
         var parentSpace = EnsureSpacePath(newParts);
-        parentSpace.AddSubspace(space);
+        if (space.Name == parentSpace.Name)
+        {
+            parentSpace.AddTypes(space.Declarations);
+        }
+        else
+        {
+            parentSpace.AddSubspace(space);
+        }
     }
 
     private SpaceDeclarationNode EnsureSpacePath(IReadOnlyList<string> newParts)
@@ -24,14 +36,14 @@ public class VectraAstModule
             for (var i = 1; i < newParts.Count; i++)
             {
                 var currentNamePart = newParts[i];
-                var selected = current.Subspaces.FirstOrDefault(x => x.Name == currentNamePart);
-                if (selected == null)
+                var selected = current!.Subspaces.FirstOrDefault(x => x.Name == currentNamePart);
+                if (selected != null)
                 {
-                    return current;
+                    current = selected;
                 }
             }
         }
 
-        return current;
+        return current!;
     }
 }

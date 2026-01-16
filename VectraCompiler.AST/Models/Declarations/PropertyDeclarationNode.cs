@@ -2,10 +2,10 @@ using VectraCompiler.AST.Models.Declarations.Interfaces;
 
 namespace VectraCompiler.AST.Models.Declarations;
 
-public class PropertyDeclarationNode(string name, string type, SourceSpan span, bool hasGetter, bool hasSetter) : IMemberNode
+public class PropertyDeclarationNode(string name, string type, SourceSpan span, bool hasGetter, bool hasSetter) : AstNodeBase, IMemberNode
 {
-    public SourceSpan Span { get; } = span;
-    public T Visit<T>(IAstVisitor<T> visitor)
+    public override SourceSpan Span { get; } = span;
+    public override T Visit<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitPropertyDeclaration(this);
     }
@@ -15,4 +15,9 @@ public class PropertyDeclarationNode(string name, string type, SourceSpan span, 
     public bool HasSetter { get; } = hasSetter;
     public string Type { get; } = type;
     // TODO: add a way to have getter and setter method bodies
+
+    public override string ToPrintable()
+    {
+        return $"{Type} {Name} {{ {(HasGetter ? "get; " : string.Empty)}{(HasSetter ? "set; " : string.Empty)}}}";
+    }
 }

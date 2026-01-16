@@ -35,5 +35,11 @@ public class SpaceDeclarationNode
     public void SetParent(SpaceDeclarationNode parent)
     {
         Parent ??= parent;
+        parent?.Subspaces.Add(this);
+    }
+
+    public override string ToString()
+    {
+        return $"space {QualifiedName};\n\n{string.Join("\n\n", Declarations)}{(Declarations.Count > 0 ? $"\n\n{string.Join("\n\n", Subspaces)}" : $"{string.Join("\n\n", Subspaces)}")}";
     }
 }

@@ -23,6 +23,8 @@ public interface IAstVisitor<out T>
     T VisitIdentifierExpression(IdentifierExpressionNode node);
     T VisitLiteralExpression(LiteralExpressionNode node);
     T VisitNewExpression(NewExpressionNode node);
+    T VisitMemberAccessExpression(MemberAccessExpressionNode node);
+    T VisitAssignmentExpression(AssignmentExpressionNode node);
     
     #endregion
 

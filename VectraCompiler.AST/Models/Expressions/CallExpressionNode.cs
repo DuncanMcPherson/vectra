@@ -2,14 +2,16 @@ namespace VectraCompiler.AST.Models.Expressions;
 
 public class CallExpressionNode(
     IExpressionNode target,
-    string methodName,
     IList<IExpressionNode> arguments,
-    SourceSpan span) : IExpressionNode
+    SourceSpan span) : AstNodeBase, IExpressionNode
 {
     public IExpressionNode Target { get; } = target;
-    public string MethodName { get; } = methodName;
     public IList<IExpressionNode> Arguments { get; } = arguments;
-    public SourceSpan Span { get; } = span;
+    public override SourceSpan Span { get; } = span;
     
-    public T Visit<T>(IAstVisitor<T> visitor) => visitor.VisitCallExpression(this);
+    public override T Visit<T>(IAstVisitor<T> visitor) => visitor.VisitCallExpression(this);
+    public override string ToPrintable()
+    {
+        return $"{Target}({string.Join(", ", Arguments)})";
+    }
 }

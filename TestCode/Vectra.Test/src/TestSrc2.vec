@@ -1,6 +1,28 @@
 space Vectra.Test;
 
 class Player {
+    number Age { get; set; }
+    number Wins = 0;
+    number Losses = 0;
     Player(number age) {
+        this.Age = age;
+    }
+    
+    void Win() {
+        this.Wins = this.Wins + 1;
+    }
+    
+    void Lose() {
+        this.Losses = this.Losses + 1;
+    }
+    
+    number GetVictoryPercentage() {
+        let totalMatches = this.Wins + this.Losses;
+        return this.Wins / totalMatches;
+    }
+}
+
+class Observer {
+    void Watch(Player player) {
     }
 }

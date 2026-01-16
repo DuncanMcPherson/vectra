@@ -1,6 +1,7 @@
 using VectraCompiler.Package.Models;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
+using VectraCompiler.Core.Logging;
 
 namespace VectraCompiler.Package;
 
@@ -28,7 +29,7 @@ public static class SourceFileDiscoverer
             .ToList();
         if (files.Count == 0)
         {
-            Console.WriteLine($"WARNING: Pattern did not match any files.\nModule: {module.Name}");
+            Logger.LogWarning(CompilePhase.Metadata, $"Pattern did not match any files.\n\tModule: {module.Name}");
         }
 
         return files;

@@ -14,4 +14,9 @@ public class MethodDeclarationNode(string name, IList<VParameter> parameters, IL
     {
         return visitor.VisitMethodDeclaration(this);
     }
+
+    public override string ToPrintable()
+    {
+        return $"{ReturnType} {Name}({string.Join(", ", Parameters)}) {{\n\t{string.Join("\n\t", Body)}\n}}";
+    }
 }

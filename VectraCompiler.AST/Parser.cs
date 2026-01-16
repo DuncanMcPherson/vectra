@@ -48,6 +48,10 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         }
 
         space.AddTypes(types);
+        while (space.Parent is not null)
+        {
+            space = space.Parent;
+        }
         return space;
     }
 
@@ -142,7 +146,7 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
                 var pNameToken = Advance();
                 parameters.Add(new(pNameToken.Value, pTypeToken.Value));
             } while (Match(","));
-            Expect(")", "Expected '(' after parameter list");
+            Expect(")", "Expected ')' after parameter list");
         }
         
         Expect("{", "Expected '{' to start method body");
@@ -168,12 +172,12 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
     private FieldDeclarationNode ParseField(Token typeToken, Token nameToken)
     {
-        if (Match(";"))
+        // ';' or '=' was already parsed, skip it and move on
+        if (Previous().Value == ";")
             return new FieldDeclarationNode(
                 nameToken.Value, typeToken.Value, null,
                 new SourceSpan(typeToken.Position.Line, typeToken.Position.Column,
                     Previous().Position.Line, Previous().Position.Column));
-        Expect("=", "Expected '=' after field declaration");
         var initializer = ParseExpression();
         Expect(";", "Expected ';' after field initializer");
         return new FieldDeclarationNode(
@@ -274,7 +278,18 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
     private IExpressionNode ParseExpression()
     {
-        return ParseBinary();
+        return ParseAssignment();
+    }
+
+    private IExpressionNode ParseAssignment()
+    {
+        var left = ParseBinary();
+        if (Match("="))
+        {
+            var right = ParseExpression();
+            left = new AssignmentExpressionNode(left, right, left.Span with {EndLine = right.Span.EndLine, EndColumn = right.Span.EndColumn});
+        }
+        return left;
     }
 
     private IExpressionNode ParseBinary()
@@ -299,9 +314,9 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         {
             TokenType.Number or TokenType.String => new LiteralExpressionNode(token.Value,
                 new SourceSpan(token.Position, Peek().Position)),
-            TokenType.Identifier => ParsePossibleCall(new IdentifierExpressionNode(token.Value,
+            TokenType.Identifier => ParsePostfix(new IdentifierExpressionNode(token.Value,
                 new SourceSpan(token.Position, Peek().Position))),
-            TokenType.Keyword when token.Value == "this" => ParsePossibleCall(
+            TokenType.Keyword when token.Value == "this" => ParsePostfix(
                 new IdentifierExpressionNode("this", new(token.Position, Peek().Position))),
             TokenType.Keyword when token.Value == "new" => ParseNewExpression(token),
             _ => throw new Exception(
@@ -309,26 +324,41 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         };
     }
 
-    private IExpressionNode ParsePossibleCall(IExpressionNode target)
+    private IExpressionNode ParsePostfix(IExpressionNode expr)
     {
-        if (Peek().Value != "." || PeekNext()?.Type != TokenType.Identifier || PeekOffset(2)?.Value != "(")
-            return target;
-
-        Advance();
-        var methodNameToken = Consume(TokenType.Identifier, "Expected identifier.");
-        var arguments = new List<IExpressionNode>();
-        Advance();
-        if (!Match(")"))
+        while (true)
         {
-            do
+            if (Match("."))
             {
-                arguments.Add(ParseExpression());
-            } while (Match(","));
-            Expect(")", "Expected ')' after arguments");
-        }
+                var name = Consume(TokenType.Identifier, "Expected identifier after '.'.");
+                expr = new MemberAccessExpressionNode(
+                    expr,
+                    name.Value,
+                    expr.Span with {EndLine = name.Position.Line, EndColumn = name.Position.Column});
+                continue;
+            }
 
-        return new CallExpressionNode(target, methodNameToken.Value, arguments,
-            target.Span with { EndLine = Previous().Position.Line, EndColumn = Previous().Position.Column });
+            if (Match("("))
+            {
+                var args = new List<IExpressionNode>();
+                if (!Match(")"))
+                {
+                    do
+                    {
+                        args.Add(ParseExpression());
+                    } while (Match(","));
+                }
+                
+                expr = new CallExpressionNode(
+                    expr,
+                    args,
+                    expr.Span with {EndLine = Previous().Position.Line, EndColumn = Previous().Position.Column});
+                continue;
+            }
+
+            break;
+        }
+        return expr;
     }
     
     private NewExpressionNode ParseNewExpression(Token token)

@@ -1,13 +1,16 @@
-﻿using VectraCompiler.Package.Models;
+﻿using VectraCompiler.Core;
+using VectraCompiler.Core.Logging;
+using VectraCompiler.Package.Models;
 
 namespace VectraCompiler.Package;
 
 public static class PackageReader
 {
-    public static PackageMetadata Read(string? path)
+    public static async Task<PackageMetadata> Read(string? path, CancellationToken ct)
     {
         path = ResolvePackagePath(path);
-        var lines = File.ReadLines(path)
+        var lines = (await File.ReadAllTextAsync(path, ct))
+            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Select(l => l.Trim())
             .Where(l => !l.IsNullOrEmpty())
             .ToList();
@@ -73,6 +76,11 @@ public static class PackageReader
         if (errorsList.Count != 0)
         {
             throw new Exception(string.Join('\n', errorsList));
+        }
+
+        foreach (var mod in modList)
+        {
+            Logger.LogTrace($"Found module: {mod.Name}");
         }
 
         return new PackageMetadata

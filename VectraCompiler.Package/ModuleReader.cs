@@ -1,3 +1,4 @@
+using VectraCompiler.Core.Logging;
 using VectraCompiler.Package.Models;
 
 namespace VectraCompiler.Package;
@@ -6,7 +7,7 @@ public static class ModuleReader
 {
     public static ModuleMetadata Read(ModuleLocation locationData)
     {
-        Console.WriteLine($"Resolving metadata for module: {locationData.Name}");
+        Logger.LogInfo($"Resolving metadata for module: {locationData.Name}");
         // We already verified that the module file exists and normalized the path
         var lines = File.ReadLines(locationData.Path)
             .Select(l => l.Trim())
@@ -96,10 +97,12 @@ public static class ModuleReader
             }
 
             moduleType = parts[1].ToModuleType();
+            Logger.LogTrace($"Module is: {moduleType}");
             return;
         }
 
         moduleType = ModuleType.Executable;
+        Logger.LogTrace($"Module is: {moduleType}");
     }
 
     private static void ProcessSection(List<string> lines, out List<string> sectionData)

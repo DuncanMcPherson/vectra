@@ -1,9 +1,13 @@
 namespace VectraCompiler.AST.Models.Expressions;
 
-public class LiteralExpressionNode(object value, SourceSpan span) : IExpressionNode
+public class LiteralExpressionNode(object value, SourceSpan span) : AstNodeBase, IExpressionNode
 {
     public object Value { get; } = value;
-    public SourceSpan Span { get; } = span;
+    public override SourceSpan Span { get; } = span;
     
-    public T Visit<T>(IAstVisitor<T> visitor) => visitor.VisitLiteralExpression(this);
+    public override T Visit<T>(IAstVisitor<T> visitor) => visitor.VisitLiteralExpression(this);
+    public override string ToPrintable()
+    {
+        return $"{Value}";
+    }
 }

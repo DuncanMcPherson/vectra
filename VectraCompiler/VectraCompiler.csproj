@@ -9,7 +9,13 @@
 
     <ItemGroup>
       <ProjectReference Include="..\VectraCompiler.AST\VectraCompiler.AST.csproj" />
+      <ProjectReference Include="..\VectraCompiler.Core\VectraCompiler.Core.csproj" />
       <ProjectReference Include="..\VectraCompiler.Package\VectraCompiler.Package.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="JetBrains.Annotations" Version="2025.2.4" />
+      <PackageReference Include="Spectre.Console.Cli" Version="0.53.1" />
     </ItemGroup>
 
 </Project>

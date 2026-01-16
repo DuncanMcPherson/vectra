@@ -13,4 +13,9 @@ public class ConstructorDeclarationNode (string name, IList<VParameter> paramete
     {
         return visitor.VisitConstructorDeclaration(this);
     }
+
+    public override string ToPrintable()
+    {
+        return $"{Name}({string.Join(", ", Parameters)}) {{\n\t{string.Join("\n\t", Body)}\n}}";
+    }
 }
