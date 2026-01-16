@@ -4,6 +4,7 @@ public sealed class ModuleMetadata
 {
     public required string Name { get; init; }
     public required ModuleType Type { get; init; }
+    public required string ModuleRoot { get; init; }
 
     public IReadOnlyList<string> Dependencies { get; init; } = [];
     public IReadOnlyList<string> References { get; init; } = [];

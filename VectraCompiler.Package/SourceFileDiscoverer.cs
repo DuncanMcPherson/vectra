@@ -15,8 +15,8 @@ public static class SourceFileDiscoverer
         }
 
         var directoryInfo = new DirectoryInfoWrapper(
-            new DirectoryInfo(Path.GetPathRoot(module.Sources[0])!));
-        var pathRoot = Path.GetPathRoot(module.Sources[0])!;
+            new DirectoryInfo(module.ModuleRoot));
+        var pathRoot = module.ModuleRoot;
 
         var matches = matcher.Execute(directoryInfo);
         var files = matches.Files

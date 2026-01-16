@@ -1,18 +1,16 @@
 <Solution>
   <Project Path="VectraCompiler/VectraCompiler.csproj" />
+  <Folder Name="/TestCode/">
+    <File Path="TestCode/TestProject.vpkg" />
+  </Folder>
+  <Folder Name="/TestCode/Vectra.Test/">
+    <File Path="TestCode/Vectra.Test/Vectra.Test.vmod" />
+  </Folder>
+  <Folder Name="/TestCode/Vectra.Test/src/">
+    <File Path="TestCode/Vectra.Test/src/TestSrc.vec" />
+    <File Path="TestCode/Vectra.Test/src/TestSrc2.vec" />
+  </Folder>
   <Project Path="VectraCompiler.AST/VectraCompiler.AST.csproj" />
   <Project Path="VectraCompiler.Package/VectraCompiler.Package.csproj" />
 
-  <SolutionFolder Name="TestCode">
-    <SolutionItem Path="TestCode/TestProject.vpkg" />
-  </SolutionFolder>
-
-  <SolutionFolder Name="Vectra.Test">
-    <SolutionItem Path="TestCode/Vectra.Test/Vectra.Test.vmod" />
-  </SolutionFolder>
-
-  <SolutionFolder Name="src">
-    <SolutionItem Path="TestCode/Vectra.Test/src/TestSrc.vec" />
-    <SolutionItem Path="TestCode/Vectra.Test/src/TestSrc2.vec" />
-  </SolutionFolder>
 </Solution>

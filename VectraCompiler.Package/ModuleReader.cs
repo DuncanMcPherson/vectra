@@ -73,13 +73,16 @@ public static class ModuleReader
             }
         }
 
+        var moduleRoot = Directory.GetParent(locationData.Path)!.FullName;
+
         return new ModuleMetadata
         {
             Dependencies = dependencies,
             Name = moduleName,
             References = references,
             Type = moduleType,
-            Sources = sources
+            Sources = sources,
+            ModuleRoot = moduleRoot
         };
     }
 
@@ -107,15 +110,11 @@ public static class ModuleReader
 
     private static void ProcessSources(List<string> lines, string modulePath, out List<string> sourcesData)
     {
-        var moduleRoot = Path.GetDirectoryName(modulePath)!;
         sourcesData = [];
         foreach (var line in lines)
         {
-            if (Path.IsPathFullyQualified(line))
-                throw new Exception($"Path pattern must be relative to the module root: '{line}'");
-            var normalized = Path.GetFullPath(
-                Path.Combine(moduleRoot, line));
-            sourcesData.Add(normalized);
+            
+            sourcesData.Add(line);
 
         }
     }

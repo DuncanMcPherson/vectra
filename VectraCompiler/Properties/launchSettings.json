@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "VectraCompiler": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\Users\\12081\\source\\repos\\other\\vectra\\TestCode"
+    }
+  }
+}
