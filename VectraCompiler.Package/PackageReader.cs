@@ -1,5 +1,4 @@
-﻿using VectraCompiler.Core;
-using VectraCompiler.Core.Logging;
+﻿using VectraCompiler.Core.Logging;
 using VectraCompiler.Package.Models;
 
 namespace VectraCompiler.Package;
