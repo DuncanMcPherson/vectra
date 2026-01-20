@@ -44,6 +44,13 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
             var tokens = lexer.ReadTokens(sourceString);
             var parser = new Parser(tokens, module);
             var moduleAst = parser.Parse();
+            if (parser.Diagnostics.Count > 0)
+            {
+                foreach (var diagnostic in parser.Diagnostics)
+                {
+                    Logger.LogError($"{diagnostic.Message}: Found '{diagnostic.Found}' at {diagnostic.Line}:{diagnostic.Column}");
+                }
+            }
             for (var i = 1; i < files.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();

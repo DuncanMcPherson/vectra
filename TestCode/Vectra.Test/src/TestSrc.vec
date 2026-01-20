@@ -2,8 +2,8 @@ space Vectra.Test;
 
 class Program {
     void Main() {
-        let num1 = 42;
-        let num2 = 21;
-        let num3 = num1 + num2;
+        let player = new Player(21);
+        let observer = new Observer();
+        observer.Observe(player);
     }
 }

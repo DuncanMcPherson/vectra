@@ -8,9 +8,12 @@ using VectraCompiler.Package.Models;
 
 namespace VectraCompiler.AST;
 
-public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
+public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 {
     private int _position;
+    private readonly List<ParseDiagnostic> _diagnostics = new();
+
+    public IReadOnlyList<ParseDiagnostic> Diagnostics => _diagnostics;
 
     public VectraAstModule Parse()
     {
@@ -26,43 +29,74 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
     private SpaceDeclarationNode ParseSpace(SpaceDeclarationNode? parent = null)
     {
-        Expect("space", "Expected space declaration");
+        SpaceDeclarationNode space;
 
-        var nameToken = Consume(TokenType.Identifier, "Expected space name");
-        var space = new SpaceDeclarationNode(nameToken.Value, [],
-            new SourceSpan(nameToken.Position, nameToken.Position), parent);
-        while (!IsAtEnd() && Match("."))
+        // space is required by language rules, but we recover by defaulting to Global.
+        if (!Match("space"))
         {
-            var identifierToken = Consume(TokenType.Identifier, "Expected identifier after '.'");
-            space = new SpaceDeclarationNode(identifierToken.Value, [],
-                new(nameToken.Position, identifierToken.Position), space);
+            Report("Expected space declaration", Peek());
+            space = new SpaceDeclarationNode("Global", [], SourceSpan.EmptyAtStart, parent);
+        }
+        else
+        {
+            // Parse: space A.B.C;
+            var nameToken = Consume(TokenType.Identifier, "Expected space name");
+            space = new SpaceDeclarationNode(nameToken.Value, [],
+                new SourceSpan(nameToken.Position, nameToken.Position), parent);
+
+            while (!IsAtEnd() && Match("."))
+            {
+                var identifierToken = Consume(TokenType.Identifier, "Expected identifier after '.'");
+                space = new SpaceDeclarationNode(identifierToken.Value, [],
+                    new(nameToken.Position, identifierToken.Position), space);
+            }
+
+            Expect(";", "Expected ';' after space declaration");
         }
 
-        Expect(";", "Expected ';' after space declaration");
-
         var types = new List<ITypeDeclarationNode>();
+
+        // Top-level loop: recover per-type so we can report multiple errors.
         while (!IsAtEnd())
         {
-            var type = ParseTypeDeclaration();
-            types.Add(type);
+            var start = _position;
+            try
+            {
+                var type = ParseTypeDeclaration();
+                types.Add(type);
+            }
+            catch (ParseError)
+            {
+                SynchronizeTopLevel();
+            }
+
+            // Absolute safety: never allow no-progress loops.
+            if (_position == start)
+                Advance(); // consume something to avoid infinite loop
         }
 
         space.AddTypes(types);
+
         while (space.Parent is not null)
-        {
             space = space.Parent;
-        }
+
         return space;
     }
 
     private ITypeDeclarationNode ParseTypeDeclaration()
     {
-        var typeToken = Consume(TokenType.Keyword, "Expected a keyword");
+        var start = Peek();
+
+        if (start.Type != TokenType.Keyword)
+            throw Error("Expected a keyword to start a type declaration", start);
+
+        // We consume the keyword once we know it is a keyword.
+        var typeToken = Advance();
+
         return typeToken.Value switch
         {
             "class" => ParseClassDeclaration(),
-            _ => throw new Exception(
-                $"Unexpected type: {typeToken.Value} at line {typeToken.Position.Line}:{typeToken.Position.Column}")
+            _ => throw Error($"Unexpected type keyword: '{typeToken.Value}'", typeToken)
         };
     }
 
@@ -70,18 +104,44 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
     {
         var nameToken = Consume(TokenType.Identifier, "Expected a class name");
         Expect("{", "Expected '{' to start class body");
+
         var members = new List<IMemberNode>();
-        while (!IsAtEnd() && !Match("}"))
+
+        // Member loop: recover per-member.
+        while (!IsAtEnd() && !Check("}"))
         {
-            var member = ParseMemberDeclaration(nameToken);
-            members.Add(member);
+            var start = _position;
+            try
+            {
+                var member = ParseMemberDeclaration(nameToken);
+                members.Add(member);
+            }
+            catch (ParseError)
+            {
+                SynchronizeClassMember();
+            }
+
+            if (_position == start)
+                Advance();
         }
-        
-        return new ClassDeclarationNode(nameToken.Value, members, new SourceSpan(
-            nameToken.Position.Line,
-            nameToken.Position.Column,
-            Previous().Position.Line,
-            Previous().Position.Column
+
+        // Consume closing brace if present; otherwise report missing brace at EOF.
+        if (!Match("}"))
+        {
+            if (IsAtEnd())
+                Report("Missing '}' to close class body", PreviousOrPeek());
+            else
+                Report("Expected '}' to close class body", Peek());
+        }
+
+        return new ClassDeclarationNode(
+            nameToken.Value,
+            members,
+            new SourceSpan(
+                nameToken.Position.Line,
+                nameToken.Position.Column,
+                PreviousOrPeek().Position.Line,
+                PreviousOrPeek().Position.Column
             ));
     }
 
@@ -89,38 +149,87 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
     {
         // TODO: add support for modifiers
         if (!Check(TokenType.Identifier, TokenType.Keyword))
-            throw new Exception($"Expected identifier or keyword at line: {Previous().Position.Line}:{Previous().Position.Column}");
+            throw Error("Expected identifier or keyword at start of member declaration", Peek());
+
         var typeToken = Advance();
+
         if (typeToken.Value == classToken.Value && Match("("))
             return ParseConstructor(classToken);
+
         var nameToken = Consume(TokenType.Identifier, "Expected an identifier after type token");
+
         if (Match("("))
             return ParseMethod(typeToken, nameToken);
+
         if (Match("=") || Match(";"))
             return ParseField(typeToken, nameToken);
-        return Match("{") ? ParseProperty(typeToken, nameToken) : throw new Exception($"Unknown member declaration at line: {Previous().Position.Line}:{Previous().Position.Column}");
+
+        if (Match("{"))
+            return ParseProperty(typeToken, nameToken);
+
+        throw Error("Unknown member declaration", PreviousOrPeek());
     }
 
     private ConstructorDeclarationNode ParseConstructor(Token classToken)
     {
         var parameters = new List<VParameter>();
+
+        // Parse parameter list. If it's malformed, recover to ')' or '{'.
         if (!Match(")"))
         {
-            do
+            try
             {
-                var typeToken = Advance();
-                var nameToken = Advance();
-                parameters.Add(new VParameter(nameToken.Value, typeToken.Value));
-            } while (Match(","));
-            Expect(")", "Expected ')' after parameter list");
+                do
+                {
+                    var typeToken = ConsumeTypeToken("Expected parameter type");
+                    var nameToken = Consume(TokenType.Identifier, "Expected parameter name");
+                    parameters.Add(new VParameter(nameToken.Value, typeToken.Value));
+                } while (Match(","));
+
+                // Common recovery for your example: if '{' appears, treat ')' as missing.
+                if (Check("{"))
+                {
+                    Report("Expected ')' after parameter list", Peek());
+                }
+                else
+                {
+                    Expect(")", "Expected ')' after parameter list");
+                }
+            }
+            catch (ParseError)
+            {
+                SynchronizeToAny(")", "{");
+                Match(")"); // consume if we landed on it
+            }
         }
-        
+
         Expect("{", "Expected '{' to start method body");
+
         var statements = new List<IStatementNode>();
-        while (!IsAtEnd() && !Match("}"))
+
+        while (!IsAtEnd() && !Check("}"))
         {
-            var statement = ParseStatement();
-            statements.Add(statement);
+            var start = _position;
+            try
+            {
+                var statement = ParseStatement();
+                statements.Add(statement);
+            }
+            catch (ParseError)
+            {
+                SynchronizeStatement();
+            }
+
+            if (_position == start)
+                Advance();
+        }
+
+        if (!Match("}"))
+        {
+            if (IsAtEnd())
+                Report("Missing '}' to close constructor body", PreviousOrPeek());
+            else
+                Report("Expected '}' to close constructor body", Peek());
         }
 
         return new ConstructorDeclarationNode(
@@ -130,31 +239,70 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
             new SourceSpan(
                 classToken.Position.Line,
                 classToken.Position.Column,
-                Previous().Position.Line,
-                Previous().Position.Column
+                PreviousOrPeek().Position.Line,
+                PreviousOrPeek().Position.Column
             ));
     }
 
     private MethodDeclarationNode ParseMethod(Token typeToken, Token nameToken)
     {
         var parameters = new List<VParameter>();
+
         if (!Match(")"))
         {
-            do
+            try
             {
-                var pTypeToken = Advance();
-                var pNameToken = Advance();
-                parameters.Add(new(pNameToken.Value, pTypeToken.Value));
-            } while (Match(","));
-            Expect(")", "Expected ')' after parameter list");
+                do
+                {
+                    var pTypeToken = ConsumeTypeToken("Expected parameter type");
+                    var pNameToken = Consume(TokenType.Identifier, "Expected parameter name");
+                    parameters.Add(new(pNameToken.Value, pTypeToken.Value));
+                } while (Match(","));
+
+                // Your common recovery: "Expected ')', found '{'"
+                if (Check("{"))
+                {
+                    Report("Expected ')' after parameter list", Peek());
+                }
+                else
+                {
+                    Expect(")", "Expected ')' after parameter list");
+                }
+            }
+            catch (ParseError)
+            {
+                SynchronizeToAny(")", "{");
+                Match(")");
+            }
         }
-        
+
         Expect("{", "Expected '{' to start method body");
+
         var statements = new List<IStatementNode>();
-        while (!IsAtEnd() && !Match("}"))
+
+        while (!IsAtEnd() && !Check("}"))
         {
-            var statement = ParseStatement();
-            statements.Add(statement);
+            var start = _position;
+            try
+            {
+                var statement = ParseStatement();
+                statements.Add(statement);
+            }
+            catch (ParseError)
+            {
+                SynchronizeStatement();
+            }
+
+            if (_position == start)
+                Advance();
+        }
+
+        if (!Match("}"))
+        {
+            if (IsAtEnd())
+                Report("Missing '}' to close method body", PreviousOrPeek());
+            else
+                Report("Expected '}' to close method body", Peek());
         }
 
         return new MethodDeclarationNode(
@@ -165,25 +313,36 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
             new SourceSpan(
                 typeToken.Position.Line,
                 typeToken.Position.Column,
-                Previous().Position.Line,
-                Previous().Position.Column
+                PreviousOrPeek().Position.Line,
+                PreviousOrPeek().Position.Column
             ));
     }
 
     private FieldDeclarationNode ParseField(Token typeToken, Token nameToken)
     {
-        // ';' or '=' was already parsed, skip it and move on
+        // ';' or '=' was already parsed
         if (Previous().Value == ";")
             return new FieldDeclarationNode(
                 nameToken.Value, typeToken.Value, null,
                 new SourceSpan(typeToken.Position.Line, typeToken.Position.Column,
                     Previous().Position.Line, Previous().Position.Column));
+
         var initializer = ParseExpression();
-        Expect(";", "Expected ';' after field initializer");
+
+        // If '}' comes next, semicolon is almost certainly missing (your error #3 style).
+        if (Check("}"))
+        {
+            Report("Expected ';' after field initializer", Peek());
+        }
+        else
+        {
+            Expect(";", "Expected ';' after field initializer");
+        }
+
         return new FieldDeclarationNode(
             nameToken.Value, typeToken.Value, initializer,
             new SourceSpan(typeToken.Position.Line, typeToken.Position.Column,
-                Previous().Position.Line, Previous().Position.Column));
+                PreviousOrPeek().Position.Line, PreviousOrPeek().Position.Column));
     }
 
     private PropertyDeclarationNode ParseProperty(Token typeToken, Token nameToken)
@@ -191,32 +350,54 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         var hasGetter = false;
         var hasSetter = false;
 
-        while (!IsAtEnd() && !Match("}"))
+        while (!IsAtEnd() && !Check("}"))
         {
             var accessorType = Consume(TokenType.Keyword,
                 "Expected 'get' or 'set' after start of property declaration");
+
             switch (accessorType.Value)
             {
                 case "get":
                     if (hasGetter)
-                        throw new Exception("Properties can only have one getter.");
+                        throw Error("Properties can only have one getter.", accessorType);
                     hasGetter = true;
                     break;
                 case "set":
                     if (hasSetter)
-                        throw new Exception("Properties can only have one setter.");
+                        throw Error("Properties can only have one setter.", accessorType);
                     hasSetter = true;
                     break;
                 default:
-                    throw new Exception(
-                        $"Unexpected token: '{accessorType.Value}' at line {accessorType.Position.Line}:{accessorType.Position.Column}");
+                    throw Error($"Unexpected token: '{accessorType.Value}' in property body", accessorType);
             }
-            Expect(";", "Expected ';' after property accessor");
+
+            // Missing ';' recovery if next is '}'.
+            if (Check("}"))
+            {
+                Report("Expected ';' after property accessor", Peek());
+            }
+            else
+            {
+                Expect(";", "Expected ';' after property accessor");
+            }
         }
 
-        return new PropertyDeclarationNode(nameToken.Value, typeToken.Value,
+        if (!Match("}"))
+        {
+            if (IsAtEnd())
+                Report("Missing '}' to close property body", PreviousOrPeek());
+            else
+                Report("Expected '}' to close property body", Peek());
+        }
+
+        return new PropertyDeclarationNode(
+            nameToken.Value,
+            typeToken.Value,
             new SourceSpan(typeToken.Position.Line, typeToken.Position.Column,
-                Previous().Position.Line, Previous().Position.Column), hasGetter, hasSetter);
+                PreviousOrPeek().Position.Line, PreviousOrPeek().Position.Column),
+            hasGetter,
+            hasSetter
+        );
     }
 
     private IStatementNode ParseStatement()
@@ -233,62 +414,97 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
     private ReturnStatementNode ParseReturnStatement()
     {
         var startPosition = Previous().Position;
+
         if (Match(";"))
             return new ReturnStatementNode(new SourceSpan(startPosition.Line, startPosition.Column,
                 Previous().Position.Line, Previous().Position.Column));
+
         var value = ParseExpression();
-        Expect(";", "Expected ';' after return statement");
+
+        if (Check("}"))
+        {
+            Report("Expected ';' after return statement", Peek());
+        }
+        else
+        {
+            Expect(";", "Expected ';' after return statement");
+        }
+
         return new ReturnStatementNode(value, new SourceSpan(startPosition.Line, startPosition.Column,
-            Previous().Position.Line, Previous().Position.Column));
+            PreviousOrPeek().Position.Line, PreviousOrPeek().Position.Column));
     }
 
     private VariableDeclarationStatementNode ParseVariableDeclarationStatement(bool isExplicit)
     {
         string? explicitType = null;
         var typeToken = Peek();
+
         if (isExplicit)
-        {
             explicitType = Advance().Value;
-        }
         else
-        {
-            Advance();
-        }
+            Advance(); // 'let'
 
         var nameToken = Consume(TokenType.Identifier, "Expected identifier.");
         var name = nameToken.Value;
+
         IExpressionNode? initializer = null;
         if (Match("="))
             initializer = ParseExpression();
+
         if (!isExplicit && initializer is null)
-            throw new Exception(
-                $"Implicit variable declaration requires that an initializer is declared at line: {typeToken.Position.Line}:{typeToken.Position.Column}");
-        Expect(";", "Expected ';' after variable declaration");
-        return new VariableDeclarationStatementNode(name, explicitType, initializer, new SourceSpan(typeToken.Position.Line,
-            typeToken.Position.Column,
-            Previous().Position.Line, Previous().Position.Column));
+            throw Error("Implicit variable declaration requires an initializer", typeToken);
+
+        // Missing ';' recovery if next is '}'.
+        if (Check("}"))
+        {
+            Report("Expected ';' after variable declaration", Peek());
+        }
+        else
+        {
+            Expect(";", "Expected ';' after variable declaration");
+        }
+
+        return new VariableDeclarationStatementNode(
+            name,
+            explicitType,
+            initializer,
+            new SourceSpan(
+                typeToken.Position.Line,
+                typeToken.Position.Column,
+                PreviousOrPeek().Position.Line,
+                PreviousOrPeek().Position.Column
+            ));
     }
 
     private ExpressionStatementNode ParseExpressionStatement()
     {
         var expr = ParseExpression();
-        Expect(";", "Expected ';' after expression");
+
+        if (Check("}"))
+        {
+            Report("Expected ';' after expression", Peek());
+        }
+        else
+        {
+            Expect(";", "Expected ';' after expression");
+        }
+
         return new ExpressionStatementNode(expr, expr.Span);
     }
 
-    private IExpressionNode ParseExpression()
-    {
-        return ParseAssignment();
-    }
+    private IExpressionNode ParseExpression() => ParseAssignment();
 
     private IExpressionNode ParseAssignment()
     {
         var left = ParseBinary();
+
         if (Match("="))
         {
             var right = ParseExpression();
-            left = new AssignmentExpressionNode(left, right, left.Span with {EndLine = right.Span.EndLine, EndColumn = right.Span.EndColumn});
+            left = new AssignmentExpressionNode(left, right,
+                left.Span with { EndLine = right.Span.EndLine, EndColumn = right.Span.EndColumn });
         }
+
         return left;
     }
 
@@ -309,18 +525,25 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
     private IExpressionNode ParsePrimary()
     {
+        if (IsAtEnd())
+            throw Error("Unexpected end of file in expression", PreviousOrPeek());
+
         var token = Advance();
+
         return token.Type switch
         {
             TokenType.Number or TokenType.String => new LiteralExpressionNode(token.Value,
                 new SourceSpan(token.Position, Peek().Position)),
+
             TokenType.Identifier => ParsePostfix(new IdentifierExpressionNode(token.Value,
                 new SourceSpan(token.Position, Peek().Position))),
+
             TokenType.Keyword when token.Value == "this" => ParsePostfix(
                 new IdentifierExpressionNode("this", new(token.Position, Peek().Position))),
+
             TokenType.Keyword when token.Value == "new" => ParseNewExpression(token),
-            _ => throw new Exception(
-                $"Unexpected token '{token.Value}' at line {token.Position.Line}:{token.Position.Column}")
+
+            _ => throw Error($"Unexpected token '{token.Value}' in expression", token)
         };
     }
 
@@ -334,50 +557,150 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
                 expr = new MemberAccessExpressionNode(
                     expr,
                     name.Value,
-                    expr.Span with {EndLine = name.Position.Line, EndColumn = name.Position.Column});
+                    expr.Span with { EndLine = name.Position.Line, EndColumn = name.Position.Column });
                 continue;
             }
 
             if (Match("("))
             {
                 var args = new List<IExpressionNode>();
+
                 if (!Match(")"))
                 {
                     do
                     {
                         args.Add(ParseExpression());
                     } while (Match(","));
+
+                    // If we see a statement/block boundary, assume ')' missing.
+                    if (Check(";") || Check("}") || Check("{"))
+                        Report("Expected ')' after arguments", Peek());
+                    else
+                        Expect(")", "Expected ')' after arguments");
                 }
-                
+
                 expr = new CallExpressionNode(
                     expr,
                     args,
-                    expr.Span with {EndLine = Previous().Position.Line, EndColumn = Previous().Position.Column});
+                    expr.Span with { EndLine = PreviousOrPeek().Position.Line, EndColumn = PreviousOrPeek().Position.Column });
+
                 continue;
             }
 
             break;
         }
+
         return expr;
     }
-    
+
     private NewExpressionNode ParseNewExpression(Token token)
     {
         var typeToken = Consume(TokenType.Identifier, "Expected type name after 'new'");
         Expect("(", "Expected '(' after type name");
-        
+
         var args = new List<IExpressionNode>();
+
         if (Match(")"))
             return new NewExpressionNode(typeToken.Value, args,
                 new SourceSpan(token.Position, Previous().Position));
+
         do
         {
             args.Add(ParseExpression());
         } while (Match(","));
-        Expect(")", "Expected ')' after arguments");
 
-        return new NewExpressionNode(typeToken.Value, args, new SourceSpan(token.Position, Previous().Position));
+        if (Check(";") || Check("}") || Check("{"))
+            Report("Expected ')' after arguments", Peek());
+        else
+            Expect(")", "Expected ')' after arguments");
+
+        return new NewExpressionNode(typeToken.Value, args, new SourceSpan(token.Position, PreviousOrPeek().Position));
     }
+
+    #region Recovery / Diagnostics
+
+    private void Report(string message, Token token)
+    {
+        _diagnostics.Add(new ParseDiagnostic(
+            message,
+            token.Position.Line,
+            token.Position.Column,
+            token.Value
+        ));
+    }
+
+    private ParseError Error(string message, Token token)
+    {
+        Report(message, token);
+        return new ParseError(message);
+    }
+
+    /// <summary>
+    /// Skip tokens until we’re likely at the start of the next top-level declaration.
+    /// </summary>
+    private void SynchronizeTopLevel()
+    {
+        while (!IsAtEnd())
+        {
+            if (Check(TokenType.Keyword) && Peek().Value == "class")
+                return;
+
+            // If we hit '}', it might close something above us; let callers handle it.
+            if (Check("}"))
+                return;
+
+            Advance();
+        }
+    }
+
+    /// <summary>
+    /// Skip tokens until we can plausibly start a new member, or until end of class body.
+    /// </summary>
+    private void SynchronizeClassMember()
+    {
+        while (!IsAtEnd())
+        {
+            if (Check("}"))
+                return;
+
+            // member starts look like: (keyword|identifier) identifier ...
+            if (Check(TokenType.Keyword, TokenType.Identifier) &&
+                PeekOffset(1)?.Type == TokenType.Identifier)
+                return;
+
+            // statement-ish boundary
+            if (Match(";"))
+                return;
+
+            Advance();
+        }
+    }
+
+    /// <summary>
+    /// Skip tokens until ';' or '}' (end of statement or block).
+    /// </summary>
+    private void SynchronizeStatement()
+    {
+        while (!IsAtEnd())
+        {
+            if (Match(";"))
+                return;
+
+            if (Check("}"))
+                return;
+
+            Advance();
+        }
+    }
+
+    private void SynchronizeToAny(params string[] lexemes)
+    {
+        var set = new HashSet<string>(lexemes);
+        while (!IsAtEnd() && !set.Contains(Peek().Value))
+            Advance();
+    }
+
+    #endregion
 
     #region Utility
 
@@ -385,8 +708,16 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
     private Token Peek() => tokens[_position];
     private Token? PeekNext() => _position + 1 < tokens.Count ? tokens[_position + 1] : null;
     private Token? PeekOffset(int offset) => _position + offset < tokens.Count ? tokens[_position + offset] : null;
+
     private Token Advance() => tokens[_position++];
+
     private Token Previous() => tokens[_position - 1];
+
+    private Token PreviousOrPeek()
+    {
+        if (_position > 0) return Previous();
+        return Peek();
+    }
 
     private bool Match(string lexeme)
     {
@@ -398,21 +729,45 @@ public class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
     private void Expect(string lexeme, string errorMessage)
     {
-        if (!Match(lexeme)) 
-            throw new Exception($"{errorMessage} at line: {Peek().Position.Line}:{Peek().Position.Column}");
+        if (Match(lexeme)) return;
+        throw Error($"{errorMessage}. Expected '{lexeme}'", Peek());
     }
 
     private Token Consume(TokenType type, string errorMessage)
     {
         if (IsAtEnd())
-            throw new Exception($"Expected token of type: {type}, but reached end of file.");
-        return Peek().Type != type ? throw new Exception($"{errorMessage} at line: {Peek().Position.Line}:{Peek().Position.Column}") : Advance();
+            throw Error($"Expected token of type: {type}, but reached end of file.", PreviousOrPeek());
+
+        if (Peek().Type != type)
+            throw Error($"{errorMessage}. Expected {type}", Peek());
+
+        return Advance();
+    }
+
+    private static bool IsTypeKeyword(string kw) => kw is "number" or "bool" or "string";
+
+    private Token ConsumeTypeToken(string errorMessage)
+    {
+        if (IsAtEnd())
+            throw Error("Unexpected end of file. " + errorMessage, PreviousOrPeek());
+        var t = Peek();
+        if (t.Type == TokenType.Identifier)
+            return Advance();
+
+        if (t.Type == TokenType.Keyword && IsTypeKeyword(t.Value))
+            return Advance();
+        throw Error($"{errorMessage}", t);
     }
 
     private bool Check(params TokenType[] types) => types.Contains(Peek().Type);
     private bool Check(string lexeme) => Peek().Value == lexeme;
+
     private static bool IsBinaryOperator(string lexeme) =>
         lexeme is "+" or "-" or "*" or "/" or "==" or "!=" or ">" or "<" or ">=" or "<=";
 
     #endregion
 }
+
+public sealed record ParseDiagnostic(string Message, int Line, int Column, string Found);
+
+public sealed class ParseError(string message) : Exception(message);
