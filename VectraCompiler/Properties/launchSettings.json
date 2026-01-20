@@ -2,6 +2,7 @@
   "profiles": {
     "VectraCompiler": {
       "commandName": "Project",
+      "commandLineArgs": "build",
       "workingDirectory": "C:\\Users\\12081\\source\\repos\\other\\vectra\\TestCode"
     }
   }

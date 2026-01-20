@@ -11,6 +11,7 @@
     <File Path="TestCode/Vectra.Test/src/TestSrc2.vec" />
   </Folder>
   <Project Path="VectraCompiler.AST/VectraCompiler.AST.csproj" />
+  <Project Path="VectraCompiler.Core/VectraCompiler.Core.csproj" />
   <Project Path="VectraCompiler.Package/VectraCompiler.Package.csproj" />
 
 </Solution>

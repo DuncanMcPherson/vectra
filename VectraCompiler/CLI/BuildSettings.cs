@@ -4,7 +4,7 @@ namespace VectraCompiler.CLI;
 
 public sealed class BuildSettings : CommandSettings
 {
-    [CommandArgument(0, "<path>")]
+    [CommandArgument(0, "[path]")]
     public string Path { get; init; } = string.Empty;
     
     [CommandOption("--log-level <LEVEL>")]
