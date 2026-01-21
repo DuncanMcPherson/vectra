@@ -1,3 +1,4 @@
 package Vectra.Test
 
 module Vectra.Test Vectra.Test/Vectra.Test.vmod
+module Vectra.Test.Dependency Vectra.Test.Dependency/Vectra.Test.Dependency.vmod

@@ -1,8 +1,11 @@
 <Solution>
-  <Project Path="VectraCompiler/VectraCompiler.csproj" />
   <Folder Name="/TestCode/">
     <File Path="TestCode/TestProject.vpkg" />
   </Folder>
+  <Folder Name="/TestCode/Vectra.Test.Dependency/">
+    <File Path="TestCode/Vectra.Test.Dependency/Vectra.Test.Dependency.vmod" />
+  </Folder>
+  <Folder Name="/TestCode/Vectra.Test.Dependency/src/" />
   <Folder Name="/TestCode/Vectra.Test/">
     <File Path="TestCode/Vectra.Test/Vectra.Test.vmod" />
   </Folder>
@@ -13,5 +16,6 @@
   <Project Path="VectraCompiler.AST/VectraCompiler.AST.csproj" />
   <Project Path="VectraCompiler.Core/VectraCompiler.Core.csproj" />
   <Project Path="VectraCompiler.Package/VectraCompiler.Package.csproj" />
+  <Project Path="VectraCompiler/VectraCompiler.csproj" />
 
 </Solution>

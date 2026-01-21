@@ -9,7 +9,7 @@ public sealed class SpectreConsoleSink : ILogSink
         var color = level switch
         {
             LogLevel.Error => "red",
-            LogLevel.Warning => "orange",
+            LogLevel.Warning => "#FFA500",
             LogLevel.Info => "blue",
             LogLevel.Debug => "green",
             LogLevel.Trace => "dim",

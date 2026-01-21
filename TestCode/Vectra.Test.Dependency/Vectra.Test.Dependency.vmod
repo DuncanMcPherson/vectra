@@ -1,7 +1,7 @@
-module Vectra.Test
+module Vectra.Test.Dependency
 
 metadata {
-    type executable
+    type library
 }
 
 sources {
@@ -9,6 +9,6 @@ sources {
 }
 
 references {
-    Vectra.Test.Dependency
     Vectra.Core
+    Vectra.Game
 }

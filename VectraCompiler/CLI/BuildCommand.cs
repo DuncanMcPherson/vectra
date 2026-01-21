@@ -27,44 +27,55 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
 
         var packageData = await PackageReader.Read(settings.Path, cancellationToken);
         var moduleMetadatas = packageData.Modules.Select(ModuleReader.Read).ToList();
+        var modGraph = DependencyGraphBuilder.TopoSort(moduleMetadatas);
+        if (modGraph.HasCycle)
+        {
+            Logger.LogError($"Circular dependency detected: {string.Join(", ", modGraph.CycleNodes)}");
+            return 1;
+        }
         using var __ = Logger.BeginPhase(CompilePhase.Parse, "Parsing modules");
-        return await CompileModule(moduleMetadatas, cancellationToken);
+        return await CompileModule(modGraph.Order, cancellationToken);
     }
 
-    private static async Task<int> CompileModule(List<ModuleMetadata> modules, CancellationToken ct)
+    private static async Task<int> CompileModule(IReadOnlyList<ModuleMetadata> modules, CancellationToken ct)
     {
         foreach (var module in modules)
         {
             var files = SourceFileDiscoverer.Discover(module);
             if (files.Count == 0)
-                continue;
+                return 1;
             Logger.LogTrace($"Compiling {files[0]}...");
             var sourceString = await File.ReadAllTextAsync(files[0].Trim(),  ct);
             var lexer = new Lexer();
             var tokens = lexer.ReadTokens(sourceString);
             var parser = new Parser(tokens, module);
             var moduleAst = parser.Parse();
-            if (parser.Diagnostics.Count > 0)
-            {
-                foreach (var diagnostic in parser.Diagnostics)
-                {
-                    Logger.LogError($"{diagnostic.Message}: Found '{diagnostic.Found}' at {diagnostic.Line}:{diagnostic.Column}");
-                }
-            }
+            LogErrorsAndWarnings(files[0], parser);
             for (var i = 1; i < files.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
                 var file = files[i];
+                Logger.LogTrace($"Compiling {file}...");
                 sourceString = await File.ReadAllTextAsync(file, ct);
                 tokens = lexer.ReadTokens(sourceString);
                 parser = new Parser(tokens, module);
                 var fileAst = parser.Parse();
+                LogErrorsAndWarnings(file, parser);
                 moduleAst.InsertSpace(fileAst.Space);
             }
-
-            Logger.LogTrace(moduleAst.Space.ToString());
         }
 
         return 0;
+    }
+
+    private static void LogErrorsAndWarnings(string fileName, Parser parser)
+    {
+        if (parser.Diagnostics.Count == 0)
+            return;
+        Logger.LogWarning($"Found {parser.Diagnostics.Count} issues in {fileName}:");
+        foreach (var diagnostic in parser.Diagnostics)
+        {
+            Logger.LogError($" - {diagnostic.Message} (at {diagnostic.Line}:{diagnostic.Column})");
+        }
     }
 }
