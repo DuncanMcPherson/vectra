@@ -20,7 +20,7 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
     {
         SortResult modGraph = null!;
         var res = await AnsiConsole.Progress()
-            .AutoClear(true)
+            .AutoClear(false)
             .HideCompleted(false)
             .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn(),
                 new ElapsedTimeColumn()).StartAsync(async ctx =>
@@ -43,7 +43,7 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                 {
                     foreach (var item in packageDataResult.Diagnostics.Items)
                     {
-                        Logger.LogError(item.Message);
+                        Logger.LogError($"{item.Code.ToCodeString()} - {item.Message}");
                     }
 
                     return new Result<int>(1, db);
@@ -103,14 +103,14 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                 modGraph = modGraphRes.Value;
                 return new Result<int>(0, db);
             });
-        if (!res.Ok) return res.Value;
+        if (!res.Ok || res.Value != 0) return res.Value;
         return await CompileModule(modGraph.Order, cancellationToken);
     }
 
     private static async Task<int> CompileModule(IReadOnlyList<ModuleMetadata> modules, CancellationToken ct)
     {
         return await AnsiConsole.Progress()
-            .AutoClear(true)
+            .AutoClear(false)
             .HideCompleted(false)
             .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn(),
                 new ElapsedTimeColumn()).StartAsync(async ctx =>
@@ -124,25 +124,20 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                     modParseTask.Increment(1);
                     if (files.Count == 0)
                         return 1;
-                    Logger.LogTrace($"Compiling {files[0]}...");
-                    var sourceString = await File.ReadAllTextAsync(files[0].Trim(), ct);
-                    var lexer = new Lexer();
-                    var tokens = lexer.ReadTokens(sourceString);
-                    var parser = new Parser(tokens, module);
-                    var moduleAst = parser.Parse();
-                    LogErrorsAndWarnings(files[0], parser);
-                    modParseTask.Increment(1);
-                    for (var i = 1; i < files.Count; i++)
+                    VectraAstModule? moduleAst = null;
+                    foreach (var file in files)
                     {
                         ct.ThrowIfCancellationRequested();
-                        var file = files[i];
                         Logger.LogTrace($"Compiling {file}...");
-                        sourceString = await File.ReadAllTextAsync(file, ct);
-                        tokens = lexer.ReadTokens(sourceString);
-                        parser = new Parser(tokens, module);
+                        var lexer = new Lexer();
+                        var sourceString = await File.ReadAllTextAsync(file, ct);
+                        var tokens = lexer.ReadTokens(sourceString);
+                        var parser = new Parser(tokens, module);
                         var fileAst = parser.Parse();
                         LogErrorsAndWarnings(file, parser);
-                        moduleAst.InsertSpace(fileAst.Space);
+                        moduleAst ??= fileAst;
+                        if (!ReferenceEquals(moduleAst, fileAst))
+                            moduleAst.InsertSpace(fileAst.Space);
                         modParseTask.Increment(1);
                     }
 

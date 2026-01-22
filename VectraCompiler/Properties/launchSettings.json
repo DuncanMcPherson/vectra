@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Explain error": {
-      "commandName": "Project",
-      "commandLineArgs": "explain vec0002"
-    }
-  }
-}
