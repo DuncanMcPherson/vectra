@@ -5,7 +5,9 @@
   <Folder Name="/TestCode/Vectra.Test.Dependency/">
     <File Path="TestCode/Vectra.Test.Dependency/Vectra.Test.Dependency.vmod" />
   </Folder>
-  <Folder Name="/TestCode/Vectra.Test.Dependency/src/" />
+  <Folder Name="/TestCode/Vectra.Test.Dependency/src/">
+    <File Path="TestCode\Vectra.Test.Dependency\src\TestRunner.vec" />
+  </Folder>
   <Folder Name="/TestCode/Vectra.Test/">
     <File Path="TestCode/Vectra.Test/Vectra.Test.vmod" />
   </Folder>

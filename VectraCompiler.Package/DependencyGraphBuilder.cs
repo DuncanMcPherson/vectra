@@ -1,4 +1,7 @@
-﻿using VectraCompiler.Package.Models;
+﻿using Spectre.Console;
+using VectraCompiler.Core;
+using VectraCompiler.Core.Errors;
+using VectraCompiler.Package.Models;
 
 namespace VectraCompiler.Package;
 
@@ -11,8 +14,9 @@ public sealed record SortResult(
 
 public static class DependencyGraphBuilder
 {
-    public static SortResult TopoSort(IReadOnlyCollection<ModuleMetadata> modules)
+    public static Result<SortResult> TopoSort(IReadOnlyCollection<ModuleMetadata> modules, ProgressTask task)
     {
+        var db = new DiagnosticBag();
         var byName = modules.ToDictionary(m => m.Name, StringComparer.Ordinal);
         var dependsOn = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
         var dependents = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
@@ -22,6 +26,8 @@ public static class DependencyGraphBuilder
             dependsOn[m.Name] = new HashSet<string>(StringComparer.Ordinal);
             dependents[m.Name] = new HashSet<string>(StringComparer.Ordinal);
         }
+        
+        task.Increment(1);
 
         var errors = new List<string>();
 
@@ -39,10 +45,13 @@ public static class DependencyGraphBuilder
                 dependents[dep].Add(m.Name);
             }
         }
+        task.Increment(1);
 
         if (errors.Count > 0)
         {
-            throw new ModuleDependencyException(string.Join(Environment.NewLine, errors));
+            foreach (var error in errors)
+                db.Error(ErrorCode.ModuleNotFound, error);
+            return Result<SortResult>.Fail(db);
         }
 
         var indegree = dependsOn.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count, StringComparer.Ordinal);
@@ -63,6 +72,8 @@ public static class DependencyGraphBuilder
                 }
             }
         }
+        
+        task.Increment(1);
 
         if (order.Count != modules.Count)
         {
@@ -71,16 +82,9 @@ public static class DependencyGraphBuilder
                 .Select(kvp => kvp.Key)
                 .OrderBy(x => x, StringComparer.Ordinal)
                 .ToList();
-            return new SortResult(order, cycleNodes);
+            return Result<SortResult>.Pass(new SortResult(order, cycleNodes), db);
         }
 
-        return new SortResult(order, []);
-    }
-}
-
-public class ModuleDependencyException : Exception
-{
-    public ModuleDependencyException(string message) : base(message)
-    {
+        return Result<SortResult>.Pass(new SortResult(order, []), db);
     }
 }

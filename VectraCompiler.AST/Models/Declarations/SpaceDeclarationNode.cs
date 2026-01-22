@@ -5,7 +5,7 @@ namespace VectraCompiler.AST.Models.Declarations;
 public class SpaceDeclarationNode
 {
     public string Name { get; }
-    public string QualifiedName => $"{Parent?.Name}{(Parent == null ? string.Empty : '.')}{Name}";
+    public string QualifiedName => $"{Parent?.QualifiedName}{(Parent == null ? string.Empty : '.')}{Name}";
     public IList<ITypeDeclarationNode> Declarations { get; }
     public SourceSpan Span { get; }
     public IList<SpaceDeclarationNode> Subspaces { get; } = [];

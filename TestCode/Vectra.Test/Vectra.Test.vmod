@@ -10,5 +10,4 @@ sources {
 
 references {
     Vectra.Test.Dependency
-    Vectra.Core
 }

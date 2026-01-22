@@ -1,13 +1,8 @@
 {
   "profiles": {
-    "VectraCompiler": {
-      "commandName": "Project",
-      "commandLineArgs": "build --log-level Trace",
-      "workingDirectory": "C:\\Users\\12081\\source\\repos\\other\\vectra\\TestCode"
-    },
     "Explain error": {
       "commandName": "Project",
-      "commandLineArgs": "explain vec1001"
+      "commandLineArgs": "explain vec0002"
     }
   }
 }

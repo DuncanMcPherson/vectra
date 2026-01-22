@@ -7,8 +7,3 @@ metadata {
 sources {
     src/**/*.vec
 }
-
-references {
-    Vectra.Core
-    Vectra.Game
-}

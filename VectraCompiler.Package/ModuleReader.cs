@@ -1,3 +1,6 @@
+using Spectre.Console;
+using VectraCompiler.Core;
+using VectraCompiler.Core.Errors;
 using VectraCompiler.Core.Logging;
 using VectraCompiler.Package.Models;
 
@@ -5,19 +8,20 @@ namespace VectraCompiler.Package;
 
 public static class ModuleReader
 {
-    public static ModuleMetadata Read(ModuleLocation locationData)
+    public static async Task<Result<ModuleMetadata>> Read(ProgressTask task, ModuleLocation locationData, CancellationToken ct)
     {
         Logger.LogInfo($"Resolving metadata for module: {locationData.Name}");
+        var db = new DiagnosticBag();
         // We already verified that the module file exists and normalized the path
-        var lines = File.ReadLines(locationData.Path)
+        var lines = (await File.ReadAllLinesAsync(locationData.Path, ct))
             .Select(l => l.Trim())
             .Where(l => !l.IsNullOrEmpty())
             .ToList();
+        task.Increment(1);
         var headerParts = lines[0].Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (headerParts is not ["module", _])
         {
-            throw new Exception(
-                "Invalid module header. Module header must include 'module' followed by a module name with no spaces");
+            return Result<ModuleMetadata>.Fail(db.Error(ErrorCode.ModuleFormatInvalid, $"Invalid module header: {lines[0]}"));
         }
 
         var moduleName = headerParts[1];
@@ -27,6 +31,7 @@ public static class ModuleReader
         var sources = new List<string>();
         var seenSections = new HashSet<string>();
 
+        task.Increment(1);
         var index = 1;
         while (index < lines.Count)
         {
@@ -45,15 +50,15 @@ public static class ModuleReader
                 }
 
                 if (index == lines.Count)
-                    throw new Exception($"Unclosed section: {sectionName}");
+                    return Result<ModuleMetadata>.Fail(db.Error(ErrorCode.ModuleFormatInvalid, $"Unclosed section: {sectionName}"));
                 index++;
                 if (!seenSections.Add(sectionName))
-                    throw new Exception($"Duplicate section '{sectionName}'");
+                    return Result<ModuleMetadata>.Fail(db.Error(ErrorCode.ModuleFormatInvalid, $"Duplicate section '{sectionName}'"));
 
                 switch (sectionName)
                 {
                     case "metadata":
-                        ProcessModuleMetadata(sectionLines, out moduleType);
+                        ProcessModuleMetadata(sectionLines, out moduleType, db);
                         break;
                     case "dependencies":
                         ProcessSection(sectionLines, out dependencies);
@@ -65,18 +70,20 @@ public static class ModuleReader
                         ProcessSources(sectionLines, locationData.Path, out sources);
                         break;
                     default:
-                        throw new Exception($"Unknown section: {sectionName}");
+                        return Result<ModuleMetadata>.Fail(db.Error(ErrorCode.ModuleFormatInvalid, $"Unknown section: {sectionName}"));
                 }
             }
             else
             {
-                throw new Exception($"Unexpected line: {line}");
+                return Result<ModuleMetadata>.Fail(db.Error(ErrorCode.ModuleFormatInvalid, $"Unexpected line: {line}"));
             }
         }
+        
+        if (db.HasErrors) return Result<ModuleMetadata>.Fail(db);
 
         var moduleRoot = Directory.GetParent(locationData.Path)!.FullName;
 
-        return new ModuleMetadata
+        return Result<ModuleMetadata>.Pass(new ModuleMetadata
         {
             Dependencies = dependencies,
             Name = moduleName,
@@ -84,16 +91,18 @@ public static class ModuleReader
             Type = moduleType,
             Sources = sources,
             ModuleRoot = moduleRoot
-        };
+        }, db);
     }
 
-    private static void ProcessModuleMetadata(List<string> lines, out ModuleType moduleType)
+    private static void ProcessModuleMetadata(List<string> lines, out ModuleType moduleType, DiagnosticBag db)
     {
+        moduleType = default;
         foreach (var parts in from line in lines where line.StartsWith("type") select line.Split(' '))
         {
             if (parts.Length != 2)
             {
-                throw new Exception("Invalid module type definition");
+                db.Error(ErrorCode.ModuleFormatInvalid, "Invalid module type definition");
+                return;
             }
 
             moduleType = parts[1].ToModuleType();
