@@ -137,8 +137,9 @@ public enum CompilePhase
     Boot,
     Metadata,
     Parse,
-    Merge,
     Bind,
+    Analyze,
+    Lower,
     Emit
 }
 

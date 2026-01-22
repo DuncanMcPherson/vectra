@@ -19,6 +19,7 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
         CancellationToken cancellationToken)
     {
         SortResult modGraph = null!;
+        var packageName = string.Empty;
         var res = await AnsiConsole.Progress()
             .AutoClear(false)
             .HideCompleted(false)
@@ -49,6 +50,8 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                     return new Result<int>(1, db);
                 }
 
+                packageName = packageDataResult.Value!.Name;
+
                 var moduleMetadataTasks = packageDataResult.Value!.Modules
                     .Select(m => ctx.AddTask($"[cyan]{m.Name} metadata[/]", maxValue: 3)).ToList();
 
@@ -64,7 +67,7 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                         foundError = true;
                         foreach (var item in modMetadata.Diagnostics.Items)
                         {
-                            Logger.LogError(item.Message);
+                            Logger.LogError($"{item.Code.ToCodeString()} - {item.Message}");
                         }
                     }
                     else
@@ -93,7 +96,7 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                     {
                         foreach (var d in modGraphRes.Diagnostics.Items)
                         {
-                            Logger.LogError(d.Message);
+                            Logger.LogError($"{d.Code.ToCodeString()} - {d.Message}");
                         }
                     }
 
@@ -104,10 +107,10 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                 return new Result<int>(0, db);
             });
         if (!res.Ok || res.Value != 0) return res.Value;
-        return await CompileModule(modGraph.Order, cancellationToken);
+        return await CompileModule(packageName, modGraph.Order, cancellationToken);
     }
 
-    private static async Task<int> CompileModule(IReadOnlyList<ModuleMetadata> modules, CancellationToken ct)
+    private static async Task<int> CompileModule(string packageName, IReadOnlyList<ModuleMetadata> modules, CancellationToken ct)
     {
         return await AnsiConsole.Progress()
             .AutoClear(false)
@@ -116,6 +119,10 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                 new ElapsedTimeColumn()).StartAsync(async ctx =>
             {
                 using var _ = Logger.BeginPhase(CompilePhase.Parse, "Parsing modules");
+                var package = new VectraAstPackage
+                {
+                    Name = packageName
+                };
                 foreach (var module in modules)
                 {
                     var modParseTask = ctx.AddTask($"[cyan]{module.Name}[/]", maxValue: 1);
@@ -140,7 +147,7 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                             moduleAst.InsertSpace(fileAst.Space);
                         modParseTask.Increment(1);
                     }
-
+                    package.AddModule(moduleAst!);
                     modParseTask.StopTask();
                 }
 
