@@ -4,6 +4,7 @@ using Spectre.Console.Cli;
 using VectraCompiler.AST;
 using VectraCompiler.AST.Lexing;
 using VectraCompiler.Core;
+using VectraCompiler.Core.ConsoleExtensions;
 using VectraCompiler.Core.Errors;
 using VectraCompiler.Core.Logging;
 using VectraCompiler.Package;
@@ -18,105 +19,39 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
     public override async Task<int> ExecuteAsync(CommandContext context, BuildSettings settings,
         CancellationToken cancellationToken)
     {
-        SortResult modGraph = null!;
-        var packageName = string.Empty;
+        var logLevel = settings.LogLevel.ToLogLevel();
+        Logger.MinimumLevel = logLevel;
+        var logsDir = Extensions.IsNullOrEmpty(settings.LogDir) ? "logs" : settings.LogDir;
+        AnsiConsole.MarkupLine("[green]Building[/] [blue]{0}[/]", settings.Path);
+        if (!settings.NoColor)
+            Logger.AddSink(new SpectreConsoleSink());
+        Logger.StartNewRun(logsDir);
         var res = await AnsiConsole.Progress()
             .AutoClear(false)
             .HideCompleted(false)
-            .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn(),
-                new ElapsedTimeColumn()).StartAsync(async ctx =>
+            .Columns(new TaskDescriptionColumn {Alignment = Justify.Left}, new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn(),
+                new ElapsedTimeMsColumn()).StartAsync(async ctx =>
             {
-                var db = new DiagnosticBag();
-                var pkgTask = ctx.AddTask("[cyan]Find & parse package[/]", maxValue: 4);
-                var logLevel = settings.LogLevel.ToLogLevel();
-                Logger.MinimumLevel = logLevel;
-                var logsDir = Extensions.IsNullOrEmpty(settings.LogDir) ? "logs" : settings.LogDir;
-                AnsiConsole.MarkupLine("[green]Building[/] [blue]{0}[/]", settings.Path);
-                if (!settings.NoColor)
-                    Logger.AddSink(new SpectreConsoleSink());
-                Logger.StartNewRun(logsDir);
                 using var _ = Logger.BeginPhase(CompilePhase.Metadata, "Starting phase: Metadata");
 
-                var packageDataResult = await PackageReader.Read(pkgTask, settings.Path, cancellationToken);
-                pkgTask.Increment(1);
-                pkgTask.StopTask();
-                if (!packageDataResult.Ok)
-                {
-                    foreach (var item in packageDataResult.Diagnostics.Items)
-                    {
-                        Logger.LogError($"{item.Code.ToCodeString()} - {item.Message}");
-                    }
-
-                    return new Result<int>(1, db);
-                }
-
-                packageName = packageDataResult.Value!.Name;
-
-                var moduleMetadataTasks = packageDataResult.Value!.Modules
-                    .Select(m => ctx.AddTask($"[cyan]{m.Name} metadata[/]", maxValue: 3)).ToList();
-
-                List<ModuleMetadata> moduleMetadatas = new();
-                var foundError = false;
-                for (var i = 0; i < packageDataResult.Value!.Modules.Count; i++)
-                {
-                    var modTask = moduleMetadataTasks[i];
-                    var modLocation = packageDataResult.Value!.Modules[i];
-                    var modMetadata = await ModuleReader.Read(modTask, modLocation, cancellationToken);
-                    if (!modMetadata.Ok)
-                    {
-                        foundError = true;
-                        foreach (var item in modMetadata.Diagnostics.Items)
-                        {
-                            Logger.LogError($"{item.Code.ToCodeString()} - {item.Message}");
-                        }
-                    }
-                    else
-                    {
-                        moduleMetadatas.Add(modMetadata.Value!);
-                    }
-
-                    modTask.Increment(1);
-                    modTask.StopTask();
-                }
-
-                if (foundError) return new Result<int>(1, db);
-
-                var graphTask = ctx.AddTask("[cyan]Build dependency graph[/]", maxValue: 4);
-
-                var modGraphRes = DependencyGraphBuilder.TopoSort(moduleMetadatas, graphTask);
-                graphTask.Increment(1);
-                if (!modGraphRes.Ok || modGraphRes.Value!.HasCycle)
-                {
-                    if (modGraphRes.Value != null)
-                    {
-                        Logger.LogError(
-                            $"Circular dependency detected: {string.Join(", ", modGraphRes.Value!.CycleNodes)}");
-                    }
-                    else
-                    {
-                        foreach (var d in modGraphRes.Diagnostics.Items)
-                        {
-                            Logger.LogError($"{d.Code.ToCodeString()} - {d.Message}");
-                        }
-                    }
-
-                    return new Result<int>(1, db);
-                }
-
-                modGraph = modGraphRes.Value;
-                return new Result<int>(0, db);
+                var packageDataResult =
+                    await AstPhaseRunner.GetModulesToCompileAsync(ctx, cancellationToken, settings.Path);
+                return packageDataResult;
             });
-        if (!res.Ok || res.Value != 0) return res.Value;
+        if (!res.Ok) return 1;
+        var modGraph = res.Value.Item1;
+        var packageName = res.Value.Item2;
         return await CompileModule(packageName, modGraph.Order, cancellationToken);
     }
 
-    private static async Task<int> CompileModule(string packageName, IReadOnlyList<ModuleMetadata> modules, CancellationToken ct)
+    private static async Task<int> CompileModule(string packageName, IReadOnlyList<ModuleMetadata> modules,
+        CancellationToken ct)
     {
         return await AnsiConsole.Progress()
             .AutoClear(false)
             .HideCompleted(false)
-            .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn(),
-                new ElapsedTimeColumn()).StartAsync(async ctx =>
+            .Columns(new TaskDescriptionColumn {Alignment = Justify.Left}, new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn(),
+                new ElapsedTimeMsColumn()).StartAsync(async ctx =>
             {
                 using var _ = Logger.BeginPhase(CompilePhase.Parse, "Parsing modules");
                 var package = new VectraAstPackage
@@ -147,6 +82,7 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                             moduleAst.InsertSpace(fileAst.Space);
                         modParseTask.Increment(1);
                     }
+
                     package.AddModule(moduleAst!);
                     modParseTask.StopTask();
                 }
