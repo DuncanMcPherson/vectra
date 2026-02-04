@@ -70,6 +70,13 @@ class Program {
 }
 ```
 
+## Compiled Output
+Vectra compiles to 4 different output formats, each with a specific use:
+- **VBC**: (Vectra ByteCode) This is the executable format for running a Vectra program
+- **VDL**: (Vectra Dynamic Library) A sharable library format that can be imported and referenced from code
+- **VDI**: (Vectra Definition Interface) A public definitions format that defines publicly available types and methods contained in a `VDL`
+- **VDS**: (Vectra Debug Symbols) A debug symbols format that contains debugging information for a Vectra program or library
+
 ## Getting Started
 
 ### Prerequisites
