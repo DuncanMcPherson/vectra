@@ -66,7 +66,10 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                     modParseTask.Increment(1);
                     if (files.Count == 0)
                         return 1;
-                    VectraAstModule? moduleAst = null;
+                    var moduleAst = new VectraAstModule
+                    {
+                        ModuleName = module.Name
+                    };
                     foreach (var file in files)
                     {
                         ct.ThrowIfCancellationRequested();
@@ -74,31 +77,17 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
                         var lexer = new Lexer();
                         var sourceString = await File.ReadAllTextAsync(file, ct);
                         var tokens = lexer.ReadTokens(sourceString);
-                        var parser = new Parser(tokens, module);
-                        var fileAst = parser.Parse();
-                        LogErrorsAndWarnings(file, parser);
-                        moduleAst ??= fileAst;
-                        if (!ReferenceEquals(moduleAst, fileAst))
-                            moduleAst.InsertSpace(fileAst.Space);
+                        var parser = new Parser(tokens, file);
+                        var parseResult = parser.Parse();
+                        moduleAst.Files.Add(parseResult);
                         modParseTask.Increment(1);
                     }
 
-                    package.AddModule(moduleAst!);
+                    package.AddModule(moduleAst);
                     modParseTask.StopTask();
                 }
 
                 return 0;
             });
-    }
-
-    private static void LogErrorsAndWarnings(string fileName, Parser parser)
-    {
-        if (parser.Diagnostics.Count == 0)
-            return;
-        Logger.LogWarning($"Found {parser.Diagnostics.Count} issues in {fileName}:");
-        foreach (var diagnostic in parser.Diagnostics)
-        {
-            Logger.LogError($" - {diagnostic.Message} (at {diagnostic.Line}:{diagnostic.Column})");
-        }
     }
 }
