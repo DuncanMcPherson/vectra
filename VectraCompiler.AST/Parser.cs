@@ -4,27 +4,24 @@ using VectraCompiler.AST.Models.Declarations;
 using VectraCompiler.AST.Models.Declarations.Interfaces;
 using VectraCompiler.AST.Models.Expressions;
 using VectraCompiler.AST.Models.Statements;
-using VectraCompiler.Package.Models;
+using VectraCompiler.Core.Errors;
 
 namespace VectraCompiler.AST;
 
-public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
+public sealed class Parser(List<Token> tokens, string file)
 {
     private int _position;
-    private readonly List<ParseDiagnostic> _diagnostics = new();
+    private readonly List<Diagnostic> _diagnostics = new();
 
-    public IReadOnlyList<ParseDiagnostic> Diagnostics => _diagnostics;
-
-    public VectraAstModule Parse()
+    public ParseResult Parse()
     {
         var parsedSpace = ParseSpace();
 
-        return new VectraAstModule
+        return new ParseResult(new VectraAstFile
         {
-            IsExecutable = moduleMetadata.Type == ModuleType.Executable,
-            Name = moduleMetadata.Name,
+            FilePath = file,
             Space = parsedSpace
-        };
+        }, _diagnostics.AsReadOnly());
     }
 
     private SpaceDeclarationNode ParseSpace(SpaceDeclarationNode? parent = null)
@@ -34,7 +31,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         // space is required by language rules, but we recover by defaulting to Global.
         if (!Match("space"))
         {
-            Report("Expected space declaration", Peek());
+            Report(ErrorCode.ExpectedTokenMissing, "Expected space declaration", Peek());
             space = new SpaceDeclarationNode("Global", [], SourceSpan.EmptyAtStart, parent);
         }
         else
@@ -88,7 +85,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         var start = Peek();
 
         if (start.Type != TokenType.Keyword)
-            throw Error("Expected a keyword to start a type declaration", start);
+            throw Error(ErrorCode.ExpectedTokenMissing, "Expected a keyword to start a type declaration", start);
 
         // We consume the keyword once we know it is a keyword.
         var typeToken = Advance();
@@ -96,7 +93,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         return typeToken.Value switch
         {
             "class" => ParseClassDeclaration(),
-            _ => throw Error($"Unexpected type keyword: '{typeToken.Value}'", typeToken)
+            _ => throw Error(ErrorCode.UnknownType, $"Unexpected type keyword: '{typeToken.Value}'", typeToken)
         };
     }
 
@@ -129,9 +126,9 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         if (!Match("}"))
         {
             if (IsAtEnd())
-                Report("Missing '}' to close class body", PreviousOrPeek());
+                Report(ErrorCode.UnexpectedEndOfFile, "Missing '}' to close class body", PreviousOrPeek());
             else
-                Report("Expected '}' to close class body", Peek());
+                Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close class body", Peek());
         }
 
         return new ClassDeclarationNode(
@@ -149,7 +146,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
     {
         // TODO: add support for modifiers
         if (!Check(TokenType.Identifier, TokenType.Keyword))
-            throw Error("Expected identifier or keyword at start of member declaration", Peek());
+            throw Error(ErrorCode.ExpectedTokenMissing, "Expected identifier or keyword at start of member declaration", Peek());
 
         var typeToken = Advance();
 
@@ -167,7 +164,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         if (Match("{"))
             return ParseProperty(typeToken, nameToken);
 
-        throw Error("Unknown member declaration", PreviousOrPeek());
+        throw Error(ErrorCode.UnknownType, "Unknown member declaration", PreviousOrPeek());
     }
 
     private ConstructorDeclarationNode ParseConstructor(Token classToken)
@@ -189,7 +186,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
                 // Common recovery for your example: if '{' appears, treat ')' as missing.
                 if (Check("{"))
                 {
-                    Report("Expected ')' after parameter list", Peek());
+                    Report(ErrorCode.ExpectedTokenMissing, "Expected ')' after parameter list", Peek());
                 }
                 else
                 {
@@ -227,9 +224,9 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         if (!Match("}"))
         {
             if (IsAtEnd())
-                Report("Missing '}' to close constructor body", PreviousOrPeek());
+                Report(ErrorCode.UnexpectedEndOfFile, "Missing '}' to close constructor body", PreviousOrPeek());
             else
-                Report("Expected '}' to close constructor body", Peek());
+                Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close constructor body", Peek());
         }
 
         return new ConstructorDeclarationNode(
@@ -262,7 +259,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
                 // Your common recovery: "Expected ')', found '{'"
                 if (Check("{"))
                 {
-                    Report("Expected ')' after parameter list", Peek());
+                    Report(ErrorCode.ExpectedTokenMissing, "Expected ')' after parameter list", Peek());
                 }
                 else
                 {
@@ -300,9 +297,9 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         if (!Match("}"))
         {
             if (IsAtEnd())
-                Report("Missing '}' to close method body", PreviousOrPeek());
+                Report(ErrorCode.UnexpectedEndOfFile, "Missing '}' to close method body", PreviousOrPeek());
             else
-                Report("Expected '}' to close method body", Peek());
+                Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close method body", Peek());
         }
 
         return new MethodDeclarationNode(
@@ -332,7 +329,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         // If '}' comes next, semicolon is almost certainly missing (your error #3 style).
         if (Check("}"))
         {
-            Report("Expected ';' after field initializer", Peek());
+            Report(ErrorCode.ExpectedTokenMissing, "Expected ';' after field initializer", Peek());
         }
         else
         {
@@ -359,22 +356,22 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
             {
                 case "get":
                     if (hasGetter)
-                        throw Error("Properties can only have one getter.", accessorType);
+                        throw Error(ErrorCode.DuplicateAccessor, "Properties can only have one getter.", accessorType);
                     hasGetter = true;
                     break;
                 case "set":
                     if (hasSetter)
-                        throw Error("Properties can only have one setter.", accessorType);
+                        throw Error(ErrorCode.DuplicateAccessor, "Properties can only have one setter.", accessorType);
                     hasSetter = true;
                     break;
                 default:
-                    throw Error($"Unexpected token: '{accessorType.Value}' in property body", accessorType);
+                    throw Error(ErrorCode.UnexpectedToken, $"Unexpected token: '{accessorType.Value}' in property body", accessorType);
             }
 
             // Missing ';' recovery if next is '}'.
             if (Check("}"))
             {
-                Report("Expected ';' after property accessor", Peek());
+                Report(ErrorCode.ExpectedTokenMissing, "Expected ';' after property accessor", Peek());
             }
             else
             {
@@ -385,9 +382,9 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         if (!Match("}"))
         {
             if (IsAtEnd())
-                Report("Missing '}' to close property body", PreviousOrPeek());
+                Report(ErrorCode.UnexpectedEndOfFile, "Missing '}' to close property body", PreviousOrPeek());
             else
-                Report("Expected '}' to close property body", Peek());
+                Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close property body", Peek());
         }
 
         return new PropertyDeclarationNode(
@@ -423,7 +420,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
         if (Check("}"))
         {
-            Report("Expected ';' after return statement", Peek());
+            Report(ErrorCode.ExpectedTokenMissing, "Expected ';' after return statement", Peek());
         }
         else
         {
@@ -452,12 +449,12 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
             initializer = ParseExpression();
 
         if (!isExplicit && initializer is null)
-            throw Error("Implicit variable declaration requires an initializer", typeToken);
+            throw Error(ErrorCode.InvalidVariableDeclaration, "Implicit variable declaration requires an initializer", typeToken);
 
         // Missing ';' recovery if next is '}'.
         if (Check("}"))
         {
-            Report("Expected ';' after variable declaration", Peek());
+            Report(ErrorCode.ExpectedTokenMissing, "Expected ';' after variable declaration", Peek());
         }
         else
         {
@@ -482,7 +479,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
         if (Check("}"))
         {
-            Report("Expected ';' after expression", Peek());
+            Report(ErrorCode.ExpectedTokenMissing, "Expected ';' after expression", Peek());
         }
         else
         {
@@ -526,7 +523,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
     private IExpressionNode ParsePrimary()
     {
         if (IsAtEnd())
-            throw Error("Unexpected end of file in expression", PreviousOrPeek());
+            throw Error(ErrorCode.UnexpectedEndOfFile, "Unexpected end of file in expression", PreviousOrPeek());
 
         var token = Advance();
 
@@ -543,7 +540,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
             TokenType.Keyword when token.Value == "new" => ParseNewExpression(token),
 
-            _ => throw Error($"Unexpected token '{token.Value}' in expression", token)
+            _ => throw Error(ErrorCode.UnexpectedToken, $"Unexpected token '{token.Value}' in expression", token)
         };
     }
 
@@ -574,7 +571,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
                     // If we see a statement/block boundary, assume ')' missing.
                     if (Check(";") || Check("}") || Check("{"))
-                        Report("Expected ')' after arguments", Peek());
+                        Report(ErrorCode.ExpectedTokenMissing, "Expected ')' after arguments", Peek());
                     else
                         Expect(")", "Expected ')' after arguments");
                 }
@@ -610,7 +607,7 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
         } while (Match(","));
 
         if (Check(";") || Check("}") || Check("{"))
-            Report("Expected ')' after arguments", Peek());
+            Report(ErrorCode.ExpectedTokenMissing, "Expected ')' after arguments", Peek());
         else
             Expect(")", "Expected ')' after arguments");
 
@@ -619,19 +616,21 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
     #region Recovery / Diagnostics
 
-    private void Report(string message, Token token)
+    private void Report(ErrorCode code, string message, Token token)
     {
-        _diagnostics.Add(new ParseDiagnostic(
+        _diagnostics.Add(new Diagnostic(
+            code,
+            Severity.Error,
             message,
+            Path.GetFileName(file),
             token.Position.Line,
-            token.Position.Column,
-            token.Value
+            token.Position.Column
         ));
     }
 
-    private ParseError Error(string message, Token token)
+    private ParseError Error(ErrorCode code, string message, Token token)
     {
-        Report(message, token);
+        Report(code, message, token);
         return new ParseError(message);
     }
 
@@ -730,16 +729,16 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
     private void Expect(string lexeme, string errorMessage)
     {
         if (Match(lexeme)) return;
-        throw Error($"{errorMessage}. Expected '{lexeme}'", Peek());
+        throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected '{lexeme}'", Peek());
     }
 
     private Token Consume(TokenType type, string errorMessage)
     {
         if (IsAtEnd())
-            throw Error($"Expected token of type: {type}, but reached end of file.", PreviousOrPeek());
+            throw Error(ErrorCode.UnexpectedEndOfFile, $"Expected token of type: {type}, but reached end of file.", PreviousOrPeek());
 
         if (Peek().Type != type)
-            throw Error($"{errorMessage}. Expected {type}", Peek());
+            throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected {type}", Peek());
 
         return Advance();
     }
@@ -749,14 +748,14 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
     private Token ConsumeTypeToken(string errorMessage)
     {
         if (IsAtEnd())
-            throw Error("Unexpected end of file. " + errorMessage, PreviousOrPeek());
+            throw Error(ErrorCode.UnexpectedEndOfFile, "Unexpected end of file. " + errorMessage, PreviousOrPeek());
         var t = Peek();
         if (t.Type == TokenType.Identifier)
             return Advance();
 
         if (t.Type == TokenType.Keyword && IsTypeKeyword(t.Value))
             return Advance();
-        throw Error($"{errorMessage}", t);
+        throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}", t);
     }
 
     private bool Check(params TokenType[] types) => types.Contains(Peek().Type);
@@ -767,7 +766,5 @@ public sealed class Parser(List<Token> tokens, ModuleMetadata moduleMetadata)
 
     #endregion
 }
-
-public sealed record ParseDiagnostic(string Message, int Line, int Column, string Found);
 
 public sealed class ParseError(string message) : Exception(message);

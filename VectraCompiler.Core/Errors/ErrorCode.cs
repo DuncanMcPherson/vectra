@@ -18,6 +18,10 @@ public enum ErrorCode
     // Parsing level errors
     ExpectedTokenMissing = 0x2001,
     UnexpectedToken = 0x2002,
+    UnexpectedEndOfFile = 0x2003,
+    InvalidVariableDeclaration = 0x2004,
+    DuplicateAccessor = 0x2005,
+    UnknownType = 0x2006,
     // Semantic analysis level errors
     // CodeGen errors
 }

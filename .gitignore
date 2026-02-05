@@ -8,3 +8,5 @@ riderModule.iml
 *.user
 *.log
 **/launchsettings.json
+.vf/
+logs/
