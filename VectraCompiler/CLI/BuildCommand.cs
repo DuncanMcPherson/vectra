@@ -2,13 +2,8 @@ using JetBrains.Annotations;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using VectraCompiler.AST;
-using VectraCompiler.AST.Lexing;
-using VectraCompiler.Core;
-using VectraCompiler.Core.ConsoleExtensions;
-using VectraCompiler.Core.Errors;
 using VectraCompiler.Core.Logging;
 using VectraCompiler.Package;
-using VectraCompiler.Package.Models;
 using Extensions = VectraCompiler.Core.Extensions;
 
 namespace VectraCompiler.CLI;
