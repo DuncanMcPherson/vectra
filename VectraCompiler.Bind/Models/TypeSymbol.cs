@@ -1,6 +1,6 @@
 namespace VectraCompiler.Bind.Models;
 
-public class TypeSymbol : Symbol
+public abstract class TypeSymbol : Symbol
 {
     protected TypeSymbol(string name) : base(SymbolKind.Type, name)
     {

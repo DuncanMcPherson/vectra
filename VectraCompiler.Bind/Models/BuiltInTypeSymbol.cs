@@ -1,6 +1,6 @@
 namespace VectraCompiler.Bind.Models;
 
-public class BuiltInTypeSymbol : TypeSymbol
+public sealed class BuiltInTypeSymbol : TypeSymbol
 {
     private BuiltInTypeSymbol(string name) : base(name)
     {

@@ -22,7 +22,10 @@ public enum ErrorCode
     InvalidVariableDeclaration = 0x2004,
     DuplicateAccessor = 0x2005,
     UnknownType = 0x2006,
-    // Semantic analysis level errors
+    //Binding Errors
+    DuplicateSymbol = 0x3001,
+    UnsupportedNode = 0x3002,
+    TypeNotFound = 0x3003,
     // CodeGen errors
 }
 

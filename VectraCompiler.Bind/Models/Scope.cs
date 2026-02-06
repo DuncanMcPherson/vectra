@@ -2,7 +2,7 @@ namespace VectraCompiler.Bind.Models;
 
 public sealed class Scope
 {
-    private readonly Dictionary<string, List<Symbol>> _symbols = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<Symbol>> _symbols = new(StringComparer.Ordinal);
     public Scope? Parent { get; }
     
     public Scope(Scope? parent) => Parent = parent;
@@ -11,6 +11,11 @@ public sealed class Scope
     {
         if (!_symbols.TryGetValue(symbol.Name, out var list))
             _symbols[symbol.Name] = list = [];
+        if (symbol is FunctionSymbol)
+        {
+            list.Add(symbol);
+            return true;
+        }
         if (list.Count > 0) return false;
         
         list.Add(symbol);
