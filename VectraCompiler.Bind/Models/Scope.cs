@@ -1,3 +1,5 @@
+using VectraCompiler.Bind.Models.Symbols;
+
 namespace VectraCompiler.Bind.Models;
 
 public sealed class Scope
@@ -11,7 +13,7 @@ public sealed class Scope
     {
         if (!_symbols.TryGetValue(symbol.Name, out var list))
             _symbols[symbol.Name] = list = [];
-        if (symbol is FunctionSymbol)
+        if (symbol is MethodSymbol || symbol is ConstructorSymbol)
         {
             list.Add(symbol);
             return true;

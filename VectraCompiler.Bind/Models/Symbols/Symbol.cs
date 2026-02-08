@@ -1,13 +1,14 @@
-﻿namespace VectraCompiler.Bind.Models;
+﻿namespace VectraCompiler.Bind.Models.Symbols;
 
 public enum SymbolKind
 {
-    Package,
-    Module,
     Type,
     Function,
     Parameter,
-    Local
+    Local,
+    Constructor,
+    Property,
+    Field
 }
 
 public abstract class Symbol

@@ -30,7 +30,7 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
         if (!packageAst.Ok) return 1;
 
         var package = packageAst.Value!;
-        var bindResult = await BindPhaseRunner.RunAsync(package, cancellationToken);
+        var bindResult = await BindPhaseRunner.RunInitialBindingAsync(package, cancellationToken);
         return bindResult.Ok ? 0 : 1;
     }
 

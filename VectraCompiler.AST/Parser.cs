@@ -69,7 +69,7 @@ public sealed class Parser(List<Token> tokens, string file)
 
             // Absolute safety: never allow no-progress loops.
             if (_position == start)
-                Advance(); // consume something to avoid infinite loop
+                Advance(); // consume something to avoid an infinite loop
         }
 
         space.AddTypes(types);
@@ -122,7 +122,7 @@ public sealed class Parser(List<Token> tokens, string file)
                 Advance();
         }
 
-        // Consume closing brace if present; otherwise report missing brace at EOF.
+        // Consume closing brace if present; otherwise report a missing brace at EOF.
         if (!Match("}"))
         {
             if (IsAtEnd())
@@ -229,10 +229,18 @@ public sealed class Parser(List<Token> tokens, string file)
                 Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close constructor body", Peek());
         }
 
+        var body = new BlockStatementNode(statements.First().Span with
+        {
+            EndColumn = statements.Last().Span.EndColumn, EndLine = statements.Last().Span.EndLine
+        })
+        {
+            Statements = statements
+        };
+
         return new ConstructorDeclarationNode(
             classToken.Value,
             parameters,
-            statements,
+            body,
             new SourceSpan(
                 classToken.Position.Line,
                 classToken.Position.Column,
@@ -301,11 +309,20 @@ public sealed class Parser(List<Token> tokens, string file)
             else
                 Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close method body", Peek());
         }
+        
+        var body = new BlockStatementNode(statements.First().Span with
+        {
+            EndColumn = statements.Last().Span.EndColumn, EndLine = statements.Last().Span.EndLine
+        })
+        {
+            Statements = statements
+        };
+
 
         return new MethodDeclarationNode(
             nameToken.Value,
             parameters,
-            statements,
+            body,
             typeToken.Value,
             new SourceSpan(
                 typeToken.Position.Line,
@@ -326,7 +343,7 @@ public sealed class Parser(List<Token> tokens, string file)
 
         var initializer = ParseExpression();
 
-        // If '}' comes next, semicolon is almost certainly missing (your error #3 style).
+        // If '}' comes next, a semicolon is almost certainly missing (your error #3 style).
         if (Check("}"))
         {
             Report(ErrorCode.ExpectedTokenMissing, "Expected ';' after field initializer", Peek());
@@ -635,7 +652,7 @@ public sealed class Parser(List<Token> tokens, string file)
     }
 
     /// <summary>
-    /// Skip tokens until we’re likely at the start of the next top-level declaration.
+    /// Skip tokens until weï¿½re likely at the start of the next top-level declaration.
     /// </summary>
     private void SynchronizeTopLevel()
     {

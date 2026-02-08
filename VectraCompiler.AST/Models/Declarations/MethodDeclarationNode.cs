@@ -3,11 +3,11 @@ using VectraCompiler.AST.Models.Statements;
 
 namespace VectraCompiler.AST.Models.Declarations;
 
-public class MethodDeclarationNode(string name, IList<VParameter> parameters, IList<IStatementNode> body, string returnType, SourceSpan span) : CallableMember
+public class MethodDeclarationNode(string name, IList<VParameter> parameters, BlockStatementNode body, string returnType, SourceSpan span) : CallableMember
 {
     public override string Name { get; } = name;
     public override IList<VParameter> Parameters { get; } = parameters;
-    public override IList<IStatementNode> Body { get; } = body;
+    public override BlockStatementNode Body { get; } = body;
     public override SourceSpan Span { get; } = span;
     public string ReturnType { get; } = returnType;
     public override T Visit<T>(IAstVisitor<T> visitor)

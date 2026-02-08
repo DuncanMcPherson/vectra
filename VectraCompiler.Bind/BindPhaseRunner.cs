@@ -4,6 +4,7 @@ using VectraCompiler.AST.Models;
 using VectraCompiler.AST.Models.Declarations;
 using VectraCompiler.AST.Models.Declarations.Interfaces;
 using VectraCompiler.Bind.Models;
+using VectraCompiler.Bind.Models.Symbols;
 using VectraCompiler.Core;
 using VectraCompiler.Core.ConsoleExtensions;
 using VectraCompiler.Core.Errors;
@@ -13,18 +14,17 @@ namespace VectraCompiler.Bind;
 
 public static class BindPhaseRunner
 {
-    private static readonly Dictionary<(Scope Parent, string Name), Scope> SpaceScopes = [];
-    public static async Task<Result<DeclarationBindResult>> RunAsync(
+    public static async Task<Result<DeclarationBindResult>> RunInitialBindingAsync(
         VectraAstPackage package,
         CancellationToken ct = default)
     {
-        SpaceScopes.Clear();
+        Dictionary<(Scope Parent, string Name), Scope> spaceScopes = [];
         return await AnsiConsole.Progress()
             .AutoClear(false)
             .HideCompleted(false)
             .Columns(new TaskDescriptionColumn { Alignment = Justify.Left }, new ProgressBarColumn(),
                 new PercentageColumn(), new SpinnerColumn(), new ElapsedTimeMsColumn())
-            .StartAsync(async ctx =>
+            .StartAsync(ctx =>
             {
                 ct.ThrowIfCancellationRequested();
                 var db = new DiagnosticBag();
@@ -40,11 +40,13 @@ public static class BindPhaseRunner
 
                 foreach (var module in package.Modules)
                 {
+                    ct.ThrowIfCancellationRequested();
                     var moduleScope = new Scope(packageScope);
 
                     foreach (var file in module.Files.Select(p => p.Tree))
                     {
-                        BindSpaceDeclaration(moduleScope, file.Space, module.ModuleName, symbolsByNode, typeMemberScopes, spacesByName, db);
+                        ct.ThrowIfCancellationRequested();
+                        BindSpaceDeclaration(moduleScope, file.Space, module.ModuleName, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes);
                     }
                     task.Increment(1);
                 }
@@ -55,16 +57,16 @@ public static class BindPhaseRunner
                     {
                         Logger.LogError($"[{item.CodeString}] {item.Message}");
                     }
-                    return Result<DeclarationBindResult>.Fail(db);
+                    return Task.FromResult(Result<DeclarationBindResult>.Fail(db));
                 }
 
-                return Result<DeclarationBindResult>.Pass(new DeclarationBindResult
+                return Task.FromResult(Result<DeclarationBindResult>.Pass(new DeclarationBindResult
                 {
                     PackageScope = packageScope,
                     SymbolsByNode = symbolsByNode,
                     TypeMemberScopes = typeMemberScopes,
                     SpaceScopesByFullName = spacesByName
-                }, db);
+                }, db));
             });
     }
 
@@ -75,9 +77,10 @@ public static class BindPhaseRunner
         Dictionary<IAstNode, Symbol> symbolsByNode,
         Dictionary<NamedTypeSymbol, Scope> typeMemberScopes,
         Dictionary<(string ModuleName, string QualifiedName), Scope> spacesByName,
-        DiagnosticBag db)
+        DiagnosticBag db,
+        Dictionary<(Scope Parent, string Name), Scope> spaceScopes)
     {
-        var spaceScope = GetOrCreateSpaceScope(parentScope, space.Name);
+        var spaceScope = GetOrCreateSpaceScope(parentScope, space.Name, spaceScopes);
         var scopeKey = (moduleName, space.QualifiedName);
         spacesByName.TryAdd(scopeKey, spaceScope);
         foreach (var declaration in space.Declarations)
@@ -87,7 +90,7 @@ public static class BindPhaseRunner
 
         foreach (var subspace in space.Subspaces)
         {
-            BindSpaceDeclaration(spaceScope, subspace, moduleName, symbolsByNode, typeMemberScopes, spacesByName, db);
+            BindSpaceDeclaration(spaceScope, subspace, moduleName, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes);
         }
 
         foreach (var declaration in space.Declarations)
@@ -109,15 +112,32 @@ public static class BindPhaseRunner
             switch (member)
             {
                 case PropertyDeclarationNode pdn:
-                    // No Symbol defined yet, skipping for now
+                    Logger.LogTrace($"Binding property '{pdn.Name}' in type '{typeSym.Name}'");
+                    var propType = ResolveType(memberScope, pdn.Type, db);
+                    var propSym = new PropertySymbol(pdn.Name, propType, pdn.HasGetter, pdn.HasSetter);
+                    if (!memberScope.TryDeclare(propSym))
+                        // TODO: add access to the file name that is currently being bound
+                        db.Error(ErrorCode.DuplicateSymbol, $"Property {pdn.Name} is already declared in {typeSym.Name}");
+                    symbolsByNode[pdn] = propSym;
                     break;
                 case FieldDeclarationNode fdn:
-                    // No Symbol defined yet, skipping for now
+                    Logger.LogTrace($"Binding field '{fdn.Name}' in type '{typeSym.Name}'");
+                    var fieldType = ResolveType(memberScope, fdn.Type, db);
+                    var fieldSym = new FieldSymbol(fdn.Name, fieldType);
+                    if (!memberScope.TryDeclare(fieldSym))
+                        db.Error(ErrorCode.DuplicateSymbol, $"Field {fdn.Name} is already declared in {typeSym.Name}");
+                    symbolsByNode[fdn] = fieldSym;
                     break;
                 case ConstructorDeclarationNode cdn:
-                    // No Symbol defined yet, skipping for now
+                    Logger.LogTrace($"Binding constructor in type '{typeSym.Name}'");
+                    var parameters = BindParameters(memberScope, typeSym, cdn.Parameters, db);
+                    var ctorSym = new ConstructorSymbol(typeSym, parameters);
+                    if (!memberScope.TryDeclare(ctorSym))
+                        db.Error(ErrorCode.DuplicateSymbol, $"Constructor is already declared in {typeSym.Name}({ctorSym.Arity})");
+                    symbolsByNode[cdn] = ctorSym;
                     break;
                 case MethodDeclarationNode mdn:
+                    Logger.LogTrace($"Binding method '{mdn.Name}' in type '{typeSym.Name}'");
                     BindFunction(memberScope, mdn, symbolsByNode, typeSym, db);
                     break;
                 default:
@@ -132,8 +152,9 @@ public static class BindPhaseRunner
     {
         var funcName = method.Name;
         var returnType = ResolveType(scope, method.ReturnType, db);
+        Logger.LogTrace($"Return type of function '{funcName}' is '{returnType.Name}'");
         var parameters = BindParameters(scope, typeSym, method.Parameters, db);
-        var funcSym = new FunctionSymbol(funcName, returnType, parameters);
+        var funcSym = new MethodSymbol(funcName, returnType, parameters);
         if (!scope.TryDeclare(funcSym))
         {
             db.Error(ErrorCode.DuplicateSymbol, $"Function {funcName} is already declared in {typeSym.Name}");
@@ -147,6 +168,7 @@ public static class BindPhaseRunner
         Dictionary<IAstNode, Symbol> symbolsByNode,
         Dictionary<NamedTypeSymbol, Scope> typeMemberScopes, DiagnosticBag db)
     {
+        Logger.LogTrace($"Binding declaration '{type.Name}' in scope '{parentFullName}'");
         var fullName = $"{parentFullName}.{type.Name}";
         var typeSym = new NamedTypeSymbol(type.Name, fullName, NamedTypeKind.Class);
         if (!parentScope.TryDeclare(typeSym))
@@ -157,22 +179,29 @@ public static class BindPhaseRunner
 
         symbolsByNode[type] = typeSym;
         var memberScope = new Scope(parentScope);
+        Logger.LogTrace($"Created member scope for type '{fullName}'");
         typeMemberScopes[typeSym] = memberScope;
     }
 
-    private static Scope GetOrCreateSpaceScope(Scope parent, string name)
+    private static Scope GetOrCreateSpaceScope(Scope parent, string name, Dictionary<(Scope Parent, string Name), Scope> spaceScopes)
     {
+        Logger.LogTrace($"Creating scope for space '{name}'");
         var key = (parent, name);
-        if (SpaceScopes.TryGetValue(key, out var existing))
+        if (spaceScopes.TryGetValue(key, out var existing))
+        {
+            Logger.LogTrace($"Reusing existing scope for space '{name}'");
             return existing;
+        }
 
         var created = new Scope(parent);
-        SpaceScopes[key] = created;
+        Logger.LogTrace($"Created new scope for space '{name}'");
+        spaceScopes[key] = created;
         return created;
     }
 
     private static void DeclareBuiltIns(Scope packageScope)
     {
+        Logger.LogTrace("Declaring built-in types");
         packageScope.TryDeclare(BuiltInTypeSymbol.Void);
         packageScope.TryDeclare(BuiltInTypeSymbol.String);
         packageScope.TryDeclare(BuiltInTypeSymbol.Number);
@@ -201,9 +230,22 @@ public static class BindPhaseRunner
         var list = new List<ParameterSymbol>(parameters.Count + 1);
         var ordinal = 0;
         if (declaringType is not null)
+        {
             list.Add(new ParameterSymbol("this", declaringType, ordinal++));
+            Logger.LogTrace($"Adding 'this' parameter for type '{declaringType.Name}' at index 0");
+        }
 
-        list.AddRange(from p in parameters let pType = ResolveType(lookupScope, p.Type, db) let pName = p.Name select new ParameterSymbol(pName, pType, ordinal++));
+        if (parameters.Any(p => p.Name == "this"))
+            db.Error(ErrorCode.DuplicateSymbol, "Parameter 'this' is not allowed in methods");
+
+        foreach (var p in parameters)
+        {
+            if (p.Name == "this") continue;
+            var pType = ResolveType(lookupScope, p.Type, db);
+            var pName = p.Name;
+            Logger.LogTrace($"Binding parameter '{pName}' of type '{pType.Name}', at index {ordinal}");
+            list.Add(new ParameterSymbol(pName, pType, ordinal++));
+        }
 
         return list;
     }

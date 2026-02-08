@@ -1,4 +1,5 @@
 ﻿using VectraCompiler.AST.Models;
+using VectraCompiler.Bind.Models.Symbols;
 
 namespace VectraCompiler.Bind.Models;
 

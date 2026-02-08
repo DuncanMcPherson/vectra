@@ -1,4 +1,4 @@
-namespace VectraCompiler.Bind.Models;
+namespace VectraCompiler.Bind.Models.Symbols;
 
 public abstract class VariableSymbol : Symbol
 {

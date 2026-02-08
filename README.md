@@ -13,6 +13,7 @@ The solution is divided into several projects:
 - **VectraCompiler**: The main CLI application. Handles command-line arguments, build orchestration, and provides a rich terminal UI using Spectre.Console.
 - **VectraCompiler.AST**: Contains the Lexer and Parser for the Vectra language. It transforms raw source code into an Abstract Syntax Tree.
 - **VectraCompiler.Package**: Responsible for reading and resolving package (`.vpkg`) and module (`.vmod`) metadata.
+- **VectraCompiler.Bind**: Handles semantic analysis and symbol binding. It ensures that types, methods, and variables are correctly defined and referenced.
 - **VectraCompiler.Core**: Provides common infrastructure such as logging, error handling (`DiagnosticBag`), and various utility extensions.
 - **TestCode**: Contains sample Vectra projects, modules, and source files used for testing the compiler.
 
@@ -24,8 +25,14 @@ Vectra is structured around "spaces" (namespaces) and classes.
 - **Structure**: `space`, `class`
 - **Types**: `number`, `string`, `bool`, `void`
 - **Declarations**: `let`, `new`, `this`
-- **Control Flow**: `return`, `get`, `set` (for properties)
+- **Control Flow**: `return`, `get`, `set`
 - **Literals**: `true`, `false`
+
+### Operators
+- **Arithmetic**: `+`, `-`, `*`, `/`, `%`
+- **Comparison**: `==`, `!=`, `<`, `>`, `<=`, `>=`
+- **Assignment**: `=`, `+=`, `-=`, `*=`, `/=`
+- **Unary**: `!`, `-`
 
 ### Key Features
 - **Spaces**: Hierarchical namespaces to organize code (e.g., `space MyProject.Utilities;`).
@@ -105,6 +112,51 @@ Common build options:
 The compiler follows a standard multi-phase approach:
 1. **Metadata Phase**: Resolve packages and modules.
 2. **Parse Phase**: Lexical analysis and parsing of source files into AST.
-3. **Bind/Analyze/Lower/Emit Phases**: (In development) Semantic analysis and code generation.
+3. **Bind Phase**: (Partially developed) Semantic analysis and symbol binding.
+4. **Analyze Phase**: (In development) Further semantic checks and validations.
+5. **Lower Phase**: (In development) Transformation of the AST into a lower-level representation.
+6. **Emit Phase**: (In development) Code generation.
 
 Logging is handled via `VectraCompiler.Core.Logging.Logger`, which supports multiple sinks including a Spectre.Console sink for interactive terminal output.
+
+## Binder Decisions Log
+
+1. **Bound IR types**
+
+   Even if you start tiny, commit to the distinction:
+  - `BoundStatement` / `BoundExpression`
+    - Both carry:
+      - `TypeSymbol` (for expressions; statements may have `void`/`none`)
+      - `SourceSpan` (so diagnostics point to real code)
+  - Start with the bound equivalents of what you already parse:
+    - `BoundReturnStatement`
+    - `BoundExpressionStatement`
+    - `BoundVariableDeclarationStatement`
+    - `BoundLiteralExpression`
+    - `BoundIdentifierExpression` (resolves to symbol)
+    - `BoundBinaryExpression`
+    - `BoundAssignmentExpression`
+    - `BoundCallExpression`
+2. **Context object**
+
+   A `BindContext` (record/class) that holds:
+- `Scope` (locals)
+- `MemberSymbol` (current method/ctor)
+- `TypeSymbol? ExpectedType` (optional, but extremely useful)
+- diagnostics sink
+
+This is the “environment” your binder needs to not become a spaghetti monster.
+
+3. **Entry points**
+
+   Give yourself two clear doorways:
+- `BindMethodBody(MethodSymbol method, BlockStatementNode body, Scope parentScope)`
+- `BindConstructorBody(ConstructorSymbol ctor, BlockStatementNode body, Scope parentScope)`
+- 
+Even if constructors are basically methods-with-void right now, separating them early prevents pain later (field init, base/this calls, definite assignment of this, etc.).
+
+4. **Two dispatchers**
+- `BindStatement(StatementNode node, BindContext ctx)`
+- `BindExpression(ExpressionNode node, BindContext ctx)`
+
+Everything funnels through those. Internals can be partial classes by category so it stays readable.

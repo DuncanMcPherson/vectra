@@ -23,6 +23,6 @@ class Player {
 }
 
 class Observer {
-    void Watch(Player player) {
+    void Watch(Player player, number rounds) {
     }
 }
