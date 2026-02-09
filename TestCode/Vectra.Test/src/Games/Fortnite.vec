@@ -6,6 +6,6 @@ class Fortnite {
 		Name = name;
 	}
 
-	void Play() {
+	void Play(Player player) {
 	}
 }

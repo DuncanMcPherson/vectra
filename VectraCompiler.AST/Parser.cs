@@ -200,7 +200,7 @@ public sealed class Parser(List<Token> tokens, string file)
             }
         }
 
-        Expect("{", "Expected '{' to start method body");
+        var bodyStart = Consume("{", "Expected '{' to start method body");
 
         var statements = new List<IStatementNode>();
 
@@ -229,10 +229,7 @@ public sealed class Parser(List<Token> tokens, string file)
                 Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close constructor body", Peek());
         }
 
-        var body = new BlockStatementNode(statements.First().Span with
-        {
-            EndColumn = statements.Last().Span.EndColumn, EndLine = statements.Last().Span.EndLine
-        })
+        var body = new BlockStatementNode(new SourceSpan(bodyStart.Position, PreviousOrPeek().Position))
         {
             Statements = statements
         };
@@ -281,7 +278,7 @@ public sealed class Parser(List<Token> tokens, string file)
             }
         }
 
-        Expect("{", "Expected '{' to start method body");
+        var bodyStart = Consume("{", "Expected '{' to start method body");
 
         var statements = new List<IStatementNode>();
 
@@ -310,10 +307,7 @@ public sealed class Parser(List<Token> tokens, string file)
                 Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close method body", Peek());
         }
         
-        var body = new BlockStatementNode(statements.First().Span with
-        {
-            EndColumn = statements.Last().Span.EndColumn, EndLine = statements.Last().Span.EndLine
-        })
+        var body = new BlockStatementNode(new SourceSpan(bodyStart.Position, PreviousOrPeek().Position))
         {
             Statements = statements
         };
@@ -757,6 +751,15 @@ public sealed class Parser(List<Token> tokens, string file)
         if (Peek().Type != type)
             throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected {type}", Peek());
 
+        return Advance();
+    }
+
+    private Token Consume(string lexeme, string errorMessage)
+    {
+        if (IsAtEnd())
+            throw Error(ErrorCode.UnexpectedEndOfFile, $"Expected token: '{lexeme}', but reached end of file.", PreviousOrPeek());
+        if (Peek().Value != lexeme)
+            throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected '{lexeme}'", Peek());
         return Advance();
     }
 
