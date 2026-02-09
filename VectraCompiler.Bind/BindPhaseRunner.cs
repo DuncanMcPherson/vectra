@@ -29,7 +29,7 @@ public static class BindPhaseRunner
                 ct.ThrowIfCancellationRequested();
                 var db = new DiagnosticBag();
                 using var _ = Logger.BeginPhase(CompilePhase.Bind, "Starting binding");
-                var task = ctx.AddTask("Bind Symbols", maxValue: package.Modules.Count);
+                var task = ctx.AddTask("Bind Symbols (Types and Spaces)", maxValue: package.Modules.Count);
 
                 var packageScope = new Scope(null);
                 DeclareBuiltIns(packageScope);
@@ -51,6 +51,17 @@ public static class BindPhaseRunner
                     task.Increment(1);
                 }
                 task.StopTask();
+                var membersTask = ctx.AddTask("Bind Symbols (Type Members)", maxValue: typeMemberScopes.Count);
+                foreach (var kvp in typeMemberScopes)
+                {
+                    var (typeSym, _) = kvp;
+                    var typeNode = symbolsByNode.First(sbn => sbn.Value == typeSym).Key;
+                    if (typeNode is not ITypeDeclarationNode decl)
+                        continue;
+                    BindMember(decl, symbolsByNode, typeMemberScopes, db);
+                    membersTask.Increment(1);
+                }
+                membersTask.StopTask();
                 if (db.Items.Count(x => x.Severity == Severity.Error) > 0)
                 {
                     foreach (var item in db.Items.Where(d => d.Severity == Severity.Error))
@@ -91,11 +102,6 @@ public static class BindPhaseRunner
         foreach (var subspace in space.Subspaces)
         {
             BindSpaceDeclaration(spaceScope, subspace, moduleName, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes);
-        }
-
-        foreach (var declaration in space.Declarations)
-        {
-            BindMember(declaration, symbolsByNode, typeMemberScopes, db);
         }
     }
 
