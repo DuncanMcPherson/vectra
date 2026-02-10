@@ -3,6 +3,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using VectraCompiler.AST;
 using VectraCompiler.Bind;
+using VectraCompiler.Core.Errors;
 using VectraCompiler.Core.Logging;
 using VectraCompiler.Package;
 using Extensions = VectraCompiler.Core.Extensions;
@@ -31,6 +32,24 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
 
         var package = packageAst.Value!;
         var bindResult = await BindPhaseRunner.RunInitialBindingAsync(package, cancellationToken);
+        if (!bindResult.Ok)
+        {
+            foreach (var item in bindResult.Diagnostics.Items)
+            {
+                switch (item.Severity)
+                {
+                    case Severity.Error:
+                        Logger.LogError($"[{item.CodeString}] {item.Message}");
+                        break;
+                    case Severity.Warning:
+                        Logger.LogWarning($"[{item.CodeString}] {item.Message}");
+                        break;
+                    case Severity.Info:
+                        Logger.LogInfo($"[{item.CodeString}] {item.Message}");
+                        break;
+                }
+            }
+        }
         return bindResult.Ok ? 0 : 1;
     }
 

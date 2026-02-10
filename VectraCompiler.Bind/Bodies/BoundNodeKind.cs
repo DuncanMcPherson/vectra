@@ -12,5 +12,6 @@ public enum BoundNodeKind
     BinaryExpression,
     CallExpression,
     MemberAccessExpression,
-    NewExpression
+    NewExpression,
+    ErrorExpression
 }

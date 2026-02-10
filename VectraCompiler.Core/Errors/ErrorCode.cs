@@ -26,6 +26,14 @@ public enum ErrorCode
     DuplicateSymbol = 0x3001,
     UnsupportedNode = 0x3002,
     TypeNotFound = 0x3003,
+    UnableToInferType = 0x3004,
+    IllegalStatement = 0x3005,
+    IllegalExpression = 0x3006,
+    IdentifierNotFound = 0x3007,
+    VariableAlreadyDeclared = 0x3008,
+    InvalidOperator = 0x3009,
+    UnsupportedLiteral = 0x3010,
+    TypeMismatch = 0x3011,
     // CodeGen errors
 }
 

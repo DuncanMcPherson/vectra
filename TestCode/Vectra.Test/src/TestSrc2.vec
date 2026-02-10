@@ -5,20 +5,20 @@ class Player {
     number Wins = 0;
     number Losses = 0;
     Player(number age) {
-        this.Age = age;
+        Age = age;
     }
     
     void Win() {
-        this.Wins = this.Wins + 1;
+        Wins = Wins + 1;
     }
     
     void Lose() {
-        this.Losses = this.Losses + 1;
+        Losses = Losses + 1;
     }
     
     number GetVictoryPercentage() {
-        let totalMatches = this.Wins + this.Losses;
-        return this.Wins / totalMatches;
+        let totalMatches = Wins + Losses;
+        return Wins / totalMatches;
     }
 }
 

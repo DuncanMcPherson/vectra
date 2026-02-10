@@ -3,6 +3,7 @@ using VectraCompiler.AST;
 using VectraCompiler.AST.Models;
 using VectraCompiler.AST.Models.Declarations;
 using VectraCompiler.AST.Models.Declarations.Interfaces;
+using VectraCompiler.Bind.Bodies.Statements;
 using VectraCompiler.Bind.Models;
 using VectraCompiler.Bind.Models.Symbols;
 using VectraCompiler.Core;
@@ -14,7 +15,7 @@ namespace VectraCompiler.Bind;
 
 public static class BindPhaseRunner
 {
-    public static async Task<Result<DeclarationBindResult>> RunInitialBindingAsync(
+    public static async Task<Result<BodyBindResult>> RunInitialBindingAsync(
         VectraAstPackage package,
         CancellationToken ct = default)
     {
@@ -37,6 +38,8 @@ public static class BindPhaseRunner
                 var symbolsByNode = new Dictionary<IAstNode, Symbol>();
                 var typeMemberScopes = new Dictionary<NamedTypeSymbol, Scope>();
                 var spacesByName = new Dictionary<(string ModuleName, string QualifiedName), Scope>();
+                var typeNodesBySymbol = new Dictionary<NamedTypeSymbol, ITypeDeclarationNode>();
+                var containingTypeByNode = new Dictionary<IMemberNode, NamedTypeSymbol>();
 
                 foreach (var module in package.Modules)
                 {
@@ -46,7 +49,7 @@ public static class BindPhaseRunner
                     foreach (var file in module.Files.Select(p => p.Tree))
                     {
                         ct.ThrowIfCancellationRequested();
-                        BindSpaceDeclaration(moduleScope, file.Space, module.ModuleName, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes);
+                        BindSpaceDeclaration(moduleScope, file.Space, module.ModuleName, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes, typeNodesBySymbol);
                     }
                     task.Increment(1);
                 }
@@ -58,7 +61,7 @@ public static class BindPhaseRunner
                     var typeNode = symbolsByNode.First(sbn => sbn.Value == typeSym).Key;
                     if (typeNode is not ITypeDeclarationNode decl)
                         continue;
-                    BindMember(decl, symbolsByNode, typeMemberScopes, db);
+                    BindMember(decl, symbolsByNode, typeMemberScopes, db, containingTypeByNode);
                     membersTask.Increment(1);
                 }
                 membersTask.StopTask();
@@ -68,16 +71,54 @@ public static class BindPhaseRunner
                     {
                         Logger.LogError($"[{item.CodeString}] {item.Message}");
                     }
-                    return Task.FromResult(Result<DeclarationBindResult>.Fail(db));
+                    return Task.FromResult(Result<BodyBindResult>.Fail(db));
                 }
 
-                return Task.FromResult(Result<DeclarationBindResult>.Pass(new DeclarationBindResult
+                var declarations = new DeclarationBindResult
                 {
                     PackageScope = packageScope,
                     SymbolsByNode = symbolsByNode,
                     TypeMemberScopes = typeMemberScopes,
                     SpaceScopesByFullName = spacesByName
-                }, db));
+                };
+                var binder = new BinderService(declarations, db);
+
+                var bodies = new Dictionary<Symbol, BoundBlockStatement>();
+                var bodyTask = ctx.AddTask("Bind Symbols (Method and Constructor Bodies)",
+                    maxValue: typeNodesBySymbol.Count);
+                foreach (var (typeSymbol, typeNode) in typeNodesBySymbol)
+                {
+                    if (typeNode is not ClassDeclarationNode cdn)
+                        continue;
+                    foreach (var memberNode in cdn.Members)
+                    {
+                        if (!declarations.SymbolsByNode.TryGetValue(memberNode, out var sym))
+                            continue;
+                        switch (sym)
+                        {
+                            case MethodSymbol m when memberNode is MethodDeclarationNode mdn:
+                                Logger.LogTrace($"Binding method body for {mdn.Name} in type {typeSymbol.Name}");
+                                bodies[sym] = binder.BindMethodBody(m, typeSymbol, mdn.Body);
+                                break;
+                            case ConstructorSymbol c when memberNode is ConstructorDeclarationNode cn:
+                                Logger.LogTrace($"Binding constructor body for {typeSymbol.Name}");
+                                bodies[sym] = binder.BindConstructorBody(c, typeSymbol, cn.Body);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    bodyTask.Increment(1);
+                }
+                bodyTask.StopTask();
+                
+                var bodyBindResult = new BodyBindResult
+                {
+                    BodiesByMember = bodies,
+                    Declarations = declarations
+                };
+                var result = db.HasErrors ? Result<BodyBindResult>.Fail(db) : Result<BodyBindResult>.Pass(bodyBindResult, db);
+                return Task.FromResult(result);
             });
     }
 
@@ -89,24 +130,25 @@ public static class BindPhaseRunner
         Dictionary<NamedTypeSymbol, Scope> typeMemberScopes,
         Dictionary<(string ModuleName, string QualifiedName), Scope> spacesByName,
         DiagnosticBag db,
-        Dictionary<(Scope Parent, string Name), Scope> spaceScopes)
+        Dictionary<(Scope Parent, string Name), Scope> spaceScopes,
+        Dictionary<NamedTypeSymbol, ITypeDeclarationNode> typeNodesBySymbol)
     {
         var spaceScope = GetOrCreateSpaceScope(parentScope, space.Name, spaceScopes);
         var scopeKey = (moduleName, space.QualifiedName);
         spacesByName.TryAdd(scopeKey, spaceScope);
         foreach (var declaration in space.Declarations)
         {
-            BindDeclaration(spaceScope, declaration, space.QualifiedName, symbolsByNode, typeMemberScopes, db);
+            BindDeclaration(spaceScope, declaration, space.QualifiedName, symbolsByNode, typeMemberScopes, db, typeNodesBySymbol);
         }
 
         foreach (var subspace in space.Subspaces)
         {
-            BindSpaceDeclaration(spaceScope, subspace, moduleName, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes);
+            BindSpaceDeclaration(spaceScope, subspace, moduleName, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes, typeNodesBySymbol);
         }
     }
 
     private static void BindMember(ITypeDeclarationNode type, Dictionary<IAstNode, Symbol> symbolsByNode,
-        Dictionary<NamedTypeSymbol, Scope> typeMemberScopes, DiagnosticBag db)
+        Dictionary<NamedTypeSymbol, Scope> typeMemberScopes, DiagnosticBag db, Dictionary<IMemberNode, NamedTypeSymbol> containingTypeByMemberNode)
     {
         // Soon we will have multiple types of type declaration nodes, so we will switch on the type to determine how to bind members
         if (type is not ClassDeclarationNode @class || !symbolsByNode.TryGetValue(type, out var sym) || sym is not NamedTypeSymbol typeSym)
@@ -141,10 +183,12 @@ public static class BindPhaseRunner
                     if (!memberScope.TryDeclare(ctorSym))
                         db.Error(ErrorCode.DuplicateSymbol, $"Constructor is already declared in {typeSym.Name}({ctorSym.Arity})");
                     symbolsByNode[cdn] = ctorSym;
+                    containingTypeByMemberNode[cdn] = typeSym;
                     break;
                 case MethodDeclarationNode mdn:
                     Logger.LogTrace($"Binding method '{mdn.Name}' in type '{typeSym.Name}'");
                     BindFunction(memberScope, mdn, symbolsByNode, typeSym, db);
+                    containingTypeByMemberNode[mdn] = typeSym;
                     break;
                 default:
                     db.Error(ErrorCode.UnsupportedNode, $"Unsupported member declaration of type '{member.GetType().Name}'");
@@ -172,11 +216,13 @@ public static class BindPhaseRunner
 
     private static void BindDeclaration(Scope parentScope, ITypeDeclarationNode type, string parentFullName,
         Dictionary<IAstNode, Symbol> symbolsByNode,
-        Dictionary<NamedTypeSymbol, Scope> typeMemberScopes, DiagnosticBag db)
+        Dictionary<NamedTypeSymbol, Scope> typeMemberScopes, DiagnosticBag db,
+        Dictionary<NamedTypeSymbol, ITypeDeclarationNode> typeNodesBySymbol)
     {
         Logger.LogTrace($"Binding declaration '{type.Name}' in scope '{parentFullName}'");
         var fullName = $"{parentFullName}.{type.Name}";
         var typeSym = new NamedTypeSymbol(type.Name, fullName, NamedTypeKind.Class);
+        typeNodesBySymbol[typeSym] = type;
         if (!parentScope.TryDeclare(typeSym))
         {
             db.Error(ErrorCode.DuplicateSymbol, $"Duplicate type symbol '{fullName}'");
@@ -212,7 +258,9 @@ public static class BindPhaseRunner
         packageScope.TryDeclare(BuiltInTypeSymbol.String);
         packageScope.TryDeclare(BuiltInTypeSymbol.Number);
         packageScope.TryDeclare(BuiltInTypeSymbol.Bool);
+        packageScope.TryDeclare(BuiltInTypeSymbol.Null);
         packageScope.TryDeclare(BuiltInTypeSymbol.Error);
+        packageScope.TryDeclare(BuiltInTypeSymbol.Unknown);
     }
 
     private static TypeSymbol ResolveType(Scope lookupScope, string typeName, DiagnosticBag db)

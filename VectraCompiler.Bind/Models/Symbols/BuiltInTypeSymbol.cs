@@ -10,7 +10,9 @@ public sealed class BuiltInTypeSymbol : TypeSymbol
     public static readonly BuiltInTypeSymbol Bool = new("bool");
     public static readonly BuiltInTypeSymbol Number = new("number");
     public static readonly BuiltInTypeSymbol String = new("string");
+    public static readonly BuiltInTypeSymbol Null = new("null");
 
     public static readonly BuiltInTypeSymbol Error = new("<error>");
+    public static readonly BuiltInTypeSymbol Unknown = new("<unknown>");
 
 }
