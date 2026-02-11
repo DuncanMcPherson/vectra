@@ -34,7 +34,7 @@ jobs:
   build:
     name: Build and upload artifacts
     needs: version
-    if: ${{ needs.version.outputs.new_release_published == true }}
+    if: ${{ needs.version.outputs.new_release_published == "true"" }}
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ needs.version.outputs.tag}}
@@ -101,7 +101,7 @@ jobs:
     name: CreateGitHub release
     runs-on: ubuntu-latest
     needs: [version, build]
-    if: ${{ needs.version.outputs.new_release_published == true }}
+    if: ${{ needs.version.outputs.new_release_published == "true" }}
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
