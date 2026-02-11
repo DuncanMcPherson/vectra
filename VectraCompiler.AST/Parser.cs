@@ -540,9 +540,8 @@ public sealed class Parser(List<Token> tokens, string file)
 
         return token.Type switch
         {
-            TokenType.Number or TokenType.String => new LiteralExpressionNode(token.Value,
-                new SourceSpan(token.Position, Peek().Position)),
-
+            TokenType.Number or TokenType.String => ParseLiteralExpression(token),
+            TokenType.Keyword when token.Value == "true" || token.Value == "false" => ParseLiteralExpression(token),
             TokenType.Identifier => ParsePostfix(new IdentifierExpressionNode(token.Value,
                 new SourceSpan(token.Position, Peek().Position))),
 
@@ -553,6 +552,20 @@ public sealed class Parser(List<Token> tokens, string file)
 
             _ => throw Error(ErrorCode.UnexpectedToken, $"Unexpected token '{token.Value}' in expression", token)
         };
+    }
+
+    private LiteralExpressionNode ParseLiteralExpression(Token token)
+    {
+        object value = token.Type switch
+        {
+            TokenType.Number when !token.Value.Contains('.') => int.Parse(token.Value),
+            TokenType.Number when token.Value.Contains('.') => double.Parse(token.Value),
+            TokenType.String => token.Value,
+            TokenType.Keyword when token.Value == "true" => true,
+            TokenType.Keyword when token.Value == "false" => false,
+            _ => throw Error(ErrorCode.UnexpectedToken, $"Unexpected token '{token.Value}' in literal expression", token)
+        };
+        return new LiteralExpressionNode(value, new SourceSpan(token.Position, Peek().Position));
     }
 
     private IExpressionNode ParsePostfix(IExpressionNode expr)

@@ -36,6 +36,9 @@ public enum ErrorCode
     TypeMismatch = 0x3011,
     TypeNotConstructable = 0x3012,
     CannotFindConstructor = 0x3013,
+    IllegalAccess = 0x3014,
+    UnknownMember = 0x3015,
+    TargetNotCallable = 0x3016,
     // CodeGen errors
 }
 

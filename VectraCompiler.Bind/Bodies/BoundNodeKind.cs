@@ -13,5 +13,6 @@ public enum BoundNodeKind
     CallExpression,
     MemberAccessExpression,
     NewExpression,
-    ErrorExpression
+    ErrorExpression,
+    MethodGroupExpression,
 }

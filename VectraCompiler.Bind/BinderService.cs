@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using VectraCompiler.AST.Models;
 using VectraCompiler.AST.Models.Expressions;
 using VectraCompiler.AST.Models.Statements;
@@ -44,8 +45,8 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         new(BoundBinaryOperatorKind.GreaterOrEqual, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Bool),
 
         // string/number or number/string (for string interpolation)
-        new BoundBinaryOperator(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String),
-        new BoundBinaryOperator(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String)
+        new (BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String),
+        new (BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String)
     ];
 
     public BoundBlockStatement BindConstructorBody(
@@ -274,23 +275,62 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
     private BoundExpression BindCall(CallExpressionNode node, BindContext ctx)
     {
         var args = node.Arguments.Select(a => BindExpression(a, ctx)).ToArray();
-        // TODO: Convert node.Target to a receiver (Local) and method name
-        var targetAsMemAccess = (MemberAccessExpressionNode)node.Target;
-        var candidates = ctx.Scope.Lookup(targetAsMemAccess.TargetName);
-        var functions = candidates.OfType<MethodSymbol>().ToArray();
-        if (functions.Length == 0)
+        var memberAccess = BindExpression(node.Target, ctx);
+        if (memberAccess is not BoundMethodGroupExpression boundAccess)
         {
-            ctx.Diagnostics.Error(ErrorCode.IdentifierNotFound, $"Unknown function '{targetAsMemAccess.TargetName}'");
+            ctx.Diagnostics.Error(ErrorCode.TargetNotCallable, $"Cannot call method on non-member access expression.");
             return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
         }
-        var best = functions.FirstOrDefault(f => f.Arity == args.Length) ?? functions.First();
-        return new BoundCallExpression(node.Span, best, null, args);
+        var functions = boundAccess.Candidates;
+        if (functions.Length == 0)
+        {
+            ctx.Diagnostics.Error(ErrorCode.IdentifierNotFound, $"No functions found on type '{boundAccess.Receiver.Type.Name}'");
+            return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+        }
+        var best = functions.FirstOrDefault(f => f.Arity == args.Length + 1) ?? functions.First();
+        return new BoundCallExpression(node.Span, best, boundAccess.Receiver, args);
     }
 
     private BoundExpression BindMemberAccess(MemberAccessExpressionNode node, BindContext ctx)
     {
-        // TODO: handle member access
-        ctx.Diagnostics.Error(ErrorCode.UnsupportedNode, "Member access is not supported yet");
+        var receiver = BindExpression(node.Object, ctx);
+        var receiverType = receiver.Type;
+
+        if (receiverType is not NamedTypeSymbol namedType)
+        {
+            ctx.Diagnostics.Error(ErrorCode.IllegalAccess, $"Cannot access member '{node.TargetName}' of non-type '{receiverType.Name}'");
+            return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+        }
+
+        if (!ctx.TryGetMemberScope(namedType, out var memberScope))
+        {
+            ctx.Diagnostics.Error(ErrorCode.TypeNotFound, $"Cannot find member scope for type '{namedType.Name}'");
+            return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+        }
+
+        var candidates = memberScope.Lookup(node.TargetName);
+
+        if (candidates.Count == 0)
+        {
+            ctx.Diagnostics.Error(ErrorCode.UnknownMember,
+                $"Type '{namedType.Name}' has no member named '{node.TargetName}'");
+            return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+        }
+
+        var methods = candidates.OfType<MethodSymbol>().ToArray();
+        if (methods.Length > 0)
+        {
+            return new BoundMethodGroupExpression(node.Span, receiver, [..methods]);
+        }
+
+        var property = candidates.OfType<PropertySymbol>().FirstOrDefault();
+        if (property is not null)
+            return new BoundMemberAccessExpressionReceiver(node.Span, receiver, property);
+        var field = candidates.OfType<FieldSymbol>().FirstOrDefault();
+        if (field is not null)
+            return new BoundMemberAccessExpressionReceiver(node.Span, receiver, field);
+        ctx.Diagnostics.Error(ErrorCode.UnknownMember,
+            $"Member '{node.TargetName}' on type '{namedType.Name}' is not a supported member kind yet");
         return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
     }
 

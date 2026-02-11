@@ -111,6 +111,8 @@ public static class BindPhaseRunner
                     BodiesByMember = bodies,
                     Declarations = declarations
                 };
+                var errorCount = db.Items.Count(x => x.Severity == Severity.Error);
+                Logger.LogInfo($"Binding completed with {errorCount} errors.");
                 var result = db.HasErrors ? Result<BodyBindResult>.Fail(db) : Result<BodyBindResult>.Pass(bodyBindResult, db);
                 return Task.FromResult(result);
             });
