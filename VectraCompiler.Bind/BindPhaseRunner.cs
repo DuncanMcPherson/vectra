@@ -65,12 +65,8 @@ public static class BindPhaseRunner
                     membersTask.Increment(1);
                 }
                 membersTask.StopTask();
-                if (db.Items.Count(x => x.Severity == Severity.Error) > 0)
+                if (db.Items.Any(x => x.Severity == Severity.Error))
                 {
-                    foreach (var item in db.Items.Where(d => d.Severity == Severity.Error))
-                    {
-                        Logger.LogError($"[{item.CodeString}] {item.Message}");
-                    }
                     return Task.FromResult(Result<BodyBindResult>.Fail(db));
                 }
 
@@ -103,8 +99,6 @@ public static class BindPhaseRunner
                             case ConstructorSymbol c when memberNode is ConstructorDeclarationNode cn:
                                 Logger.LogTrace($"Binding constructor body for {typeSymbol.Name}");
                                 bodies[sym] = binder.BindConstructorBody(c, typeSymbol, cn.Body);
-                                break;
-                            default:
                                 break;
                         }
                     }

@@ -11,13 +11,10 @@ using VectraCompiler.Core.Errors;
 
 namespace VectraCompiler.Bind;
 
-public sealed class BinderService
+public sealed class BinderService(DeclarationBindResult declarations, DiagnosticBag diagnostics)
 {
-    private readonly DeclarationBindResult _declarations;
-    private readonly DiagnosticBag _diagnostics;
-
-    private static readonly BoundBinaryOperator[] _ops =
-    {
+    private static readonly BoundBinaryOperator[] Ops =
+    [
         // int/int
         new(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
         new(BoundBinaryOperatorKind.Subtract, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
@@ -49,34 +46,28 @@ public sealed class BinderService
         // string/number or number/string (for string interpolation)
         new BoundBinaryOperator(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String),
         new BoundBinaryOperator(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String)
-    };
-
-    public BinderService(DeclarationBindResult declarations, DiagnosticBag diagnostics)
-    {
-        _declarations = declarations;
-        _diagnostics = diagnostics;
-    }
+    ];
 
     public BoundBlockStatement BindConstructorBody(
         ConstructorSymbol ctor,
         NamedTypeSymbol containingType,
         BlockStatementNode body)
     {
-        _declarations.TypeMemberScopes.TryGetValue(containingType, out var memberScope);
+        declarations.TypeMemberScopes.TryGetValue(containingType, out var memberScope);
         var localScope = new Scope(memberScope);
 
         foreach (var parameter in ctor.Parameters)
         {
             if (!localScope.TryDeclare(parameter))
             {
-                _diagnostics.Error(ErrorCode.DuplicateSymbol, $"Parameter '{parameter.Name}' is already declared.");
+                diagnostics.Error(ErrorCode.DuplicateSymbol, $"Parameter '{parameter.Name}' is already declared.");
             }
         }
 
         var ctx = new BindContext
         {
-            Declarations = _declarations,
-            Diagnostics = _diagnostics,
+            Declarations = declarations,
+            Diagnostics = diagnostics,
             Scope = localScope,
             ContainingType = containingType,
             ContainingCallable = ctor,
@@ -91,21 +82,21 @@ public sealed class BinderService
         NamedTypeSymbol containingType,
         BlockStatementNode body)
     {
-        _declarations.TypeMemberScopes.TryGetValue(containingType, out var memberScope);
+        declarations.TypeMemberScopes.TryGetValue(containingType, out var memberScope);
         var localScope = new Scope(memberScope);
 
         foreach (var parameter in method.Parameters)
         {
             if (!localScope.TryDeclare(parameter))
             {
-                _diagnostics.Error(ErrorCode.DuplicateSymbol, $"Parameter '{parameter.Name}' is already declared.");
+                diagnostics.Error(ErrorCode.DuplicateSymbol, $"Parameter '{parameter.Name}' is already declared.");
             }
         }
 
         var ctx = new BindContext
         {
-            Declarations = _declarations,
-            Diagnostics = _diagnostics,
+            Declarations = declarations,
+            Diagnostics = diagnostics,
             Scope = localScope,
             ContainingType = containingType,
             ContainingCallable = method,
@@ -274,7 +265,7 @@ public sealed class BinderService
         var left = BindExpression(node.Left, ctx);
         var right = BindExpression(node.Right, ctx);
 
-        var op = ResolveBinaryOperator(node.Operator, left.Type, right.Type, ctx, node.Span);
+        var op = ResolveBinaryOperator(node.Operator, left.Type, right.Type, ctx);
         return op is null
             ? new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error)
             : new BoundBinaryExpression(node.Span, left, op, right);
@@ -328,7 +319,7 @@ public sealed class BinderService
     }
 
     private BoundBinaryOperator? ResolveBinaryOperator(string opToken, TypeSymbol left, TypeSymbol right,
-        BindContext ctx, SourceSpan span)
+        BindContext ctx)
     {
         var kind = ResolveOperatorKind(opToken);
         if (kind is null)
@@ -358,7 +349,7 @@ public sealed class BinderService
             return new BoundBinaryOperator(kind.Value, left, right, BuiltInTypeSymbol.Bool);
         }
 
-        foreach (var op in _ops)
+        foreach (var op in Ops)
         {
             if (op.Kind == kind.Value &&
                 ReferenceEquals(op.LeftType, left) &&

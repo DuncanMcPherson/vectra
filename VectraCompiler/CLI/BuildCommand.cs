@@ -32,24 +32,6 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
 
         var package = packageAst.Value!;
         var bindResult = await BindPhaseRunner.RunInitialBindingAsync(package, cancellationToken);
-        if (!bindResult.Ok)
-        {
-            foreach (var item in bindResult.Diagnostics.Items)
-            {
-                switch (item.Severity)
-                {
-                    case Severity.Error:
-                        Logger.LogError($"[{item.CodeString}] {item.Message}");
-                        break;
-                    case Severity.Warning:
-                        Logger.LogWarning($"[{item.CodeString}] {item.Message}");
-                        break;
-                    case Severity.Info:
-                        Logger.LogInfo($"[{item.CodeString}] {item.Message}");
-                        break;
-                }
-            }
-        }
         return bindResult.Ok ? 0 : 1;
     }
 
