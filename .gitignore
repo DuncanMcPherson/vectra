@@ -11,3 +11,4 @@ riderModule.iml
 .vf/
 logs/
 node_modules/
+out/
