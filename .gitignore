@@ -10,3 +10,4 @@ riderModule.iml
 **/launchsettings.json
 .vf/
 logs/
+node_modules/
