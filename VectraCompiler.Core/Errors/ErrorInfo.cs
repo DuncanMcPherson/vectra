@@ -96,7 +96,110 @@ public static class ErrorCatalog
             ErrorCode.UnexpectedToken,
             "Unexpected token",
             "An unexpected token was encountered in the source code.",
-            "Check that the token is valid for the current context.")
+            "Check that the token is valid for the current context."),
+        [ErrorCode.UnexpectedEndOfFile] = new(
+            ErrorCode.UnexpectedEndOfFile,
+            "File ended unexpectedly",
+            "The file was ended while tokens were still expected",
+            "Check that the source code is complete and that all scopes are properly closed"),
+        [ErrorCode.InvalidVariableDeclaration] = new(
+            ErrorCode.InvalidVariableDeclaration,
+            "Variable declaration incomplete",
+            "A variable declaration was started using `let` but no initializer was provided."),
+        [ErrorCode.DuplicateAccessor] = new(
+            ErrorCode.DuplicateAccessor,
+            "Duplicate accessor",
+            "An accessor (getter or setter) was defined more than once for the same property.",
+            "Check that each property has at most one getter and one setter.",
+            """
+            number Age { get; set; } // Valid
+            number Wins { get; set; get; } // Invalid - duplicate getter
+            """),
+        [ErrorCode.UnknownType] = new(
+            ErrorCode.UnknownType,
+            "Unknown type",
+            "Attempted to declare a type that has not been implemented or does not exist in the language",
+            "Check that all type definitions follow expected conventions, and that none use types (`interface`, `enum`) that don't exist in the language"),
+        [ErrorCode.DuplicateSymbol] = new(
+            ErrorCode.DuplicateSymbol,
+            "Duplicate symbol",
+            "A symbol was declared more than once in the same scope.",
+            "Check that each symbol is declared only once in the same scope."),
+            [ErrorCode.UnsupportedNode] = new(
+                ErrorCode.UnsupportedNode,
+                "Unsupported type member node",
+                "A definition for a type member (e.g., property, method) is not supported in the current context.",
+                "Check that the type member is valid for the current context."),
+            [ErrorCode.TypeNotFound] = new(
+                ErrorCode.TypeNotFound,
+                "Type not found",
+                "A type was referenced that could not be found.",
+                "Check that the type is defined and that you are referencing it correctly."),
+            [ErrorCode.UnableToInferType] = new(
+                ErrorCode.UnableToInferType,
+                "Unable to infer type",
+                "The type of an expression could not be inferred.",
+                "Check that the expression has a clear type and that all necessary type information is available."),
+            [ErrorCode.IllegalStatement] = new(
+                ErrorCode.IllegalStatement,
+                "Illegal statement",
+                "A statement was used in an illegal context.",
+                "Check that the statement is valid for the current context."),
+            [ErrorCode.IllegalExpression] = new(
+                ErrorCode.IllegalExpression,
+                "Illegal expression",
+                "An expression was used in an illegal context.",
+                "Check that the expression is valid for the current context."),
+            [ErrorCode.IdentifierNotFound] = new(
+                ErrorCode.IdentifierNotFound,
+                "Identifier not found",
+                "An identifier (variable, property, method) was referenced that could not be found.",
+                "Check that the identifier is defined and that you are referencing it correctly."),
+            [ErrorCode.VariableAlreadyDeclared] = new(
+                ErrorCode.VariableAlreadyDeclared,
+                "Variable already declared",
+                "A variable was declared more than once in the same scope.",
+                "Check that each variable is declared only once in the same scope."),
+            [ErrorCode.InvalidOperator] = new(
+                ErrorCode.InvalidOperator,
+                "Invalid operator",
+                "An operator was used that is not supported for the given operand types.",
+                "Check that the operator is valid for the operand types."),
+            [ErrorCode.UnsupportedLiteral] = new(
+                ErrorCode.UnsupportedLiteral,
+                "Unsupported literal",
+                "A literal value was used that is not supported in the current context.",
+                "Check that the literal is valid for the current context."),
+            [ErrorCode.TypeMismatch] = new(
+                ErrorCode.TypeMismatch,
+                "Type mismatch",
+                "An operation was attempted on values of incompatible types.",
+                "Check that the types of the values are compatible for the operation."),
+            [ErrorCode.TypeNotConstructable] = new(
+                ErrorCode.TypeNotConstructable,
+                "Type not constructable",
+                "An attempt was made to construct a type that cannot be instantiated.",
+                "Check that the type can be instantiated and that you are using the correct syntax for construction."),
+            [ErrorCode.CannotFindConstructor] = new(
+                ErrorCode.CannotFindConstructor,
+                "Constructor not found",
+                "An attempt was made to construct a type, but no matching constructor could be found.",
+                "Check that the type has a constructor that matches the provided arguments."),
+            [ErrorCode.IllegalAccess] = new(
+                ErrorCode.IllegalAccess,
+                "Illegal access",
+                "An attempt was made to access a member that is not accessible in the current context.",
+                "Check that the member is accessible and that you are referencing it correctly."),
+            [ErrorCode.UnknownMember] = new(
+                ErrorCode.UnknownMember,
+                "Unknown member",
+                "An attempt was made to access a member that does not exist on the target type.",
+                "Check that the member exists on the target type and that you are referencing it correctly."),
+            [ErrorCode.TargetNotCallable] = new(
+                ErrorCode.TargetNotCallable,
+                "Target not callable",
+                "An attempt was made to call a value that is not a function or method.",
+                "Check that the target of the call is a function or method and that you are using the correct syntax for calling it.")
     };
 
     public static bool TryGet(ErrorCode code, out ErrorInfo info) => Map.TryGetValue(code, out info!);
