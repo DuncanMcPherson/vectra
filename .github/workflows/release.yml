@@ -87,9 +87,7 @@ jobs:
 
           dotnet restore VectraCompiler/VectraCompiler.csproj -r linux-x64
           dotnet publish VectraCompiler/VectraCompiler.csproj -c Release -r linux-x64 --self-contained true --no-restore -o out/linux-x64
-
-          sudo apt get update
-          sudo apt install zip -y
+          
           (cd out && zip -r vectra-win-x64.zip win-x64)
           (cd out && zip -r vectra-linux-x64.zip linux-x64)
       - name: Upload artifacts
