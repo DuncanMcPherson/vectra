@@ -22,7 +22,23 @@ public enum ErrorCode
     InvalidVariableDeclaration = 0x2004,
     DuplicateAccessor = 0x2005,
     UnknownType = 0x2006,
-    // Semantic analysis level errors
+    //Binding Errors
+    DuplicateSymbol = 0x3001,
+    UnsupportedNode = 0x3002,
+    TypeNotFound = 0x3003,
+    UnableToInferType = 0x3004,
+    IllegalStatement = 0x3005,
+    IllegalExpression = 0x3006,
+    IdentifierNotFound = 0x3007,
+    VariableAlreadyDeclared = 0x3008,
+    InvalidOperator = 0x3009,
+    UnsupportedLiteral = 0x3010,
+    TypeMismatch = 0x3011,
+    TypeNotConstructable = 0x3012,
+    CannotFindConstructor = 0x3013,
+    IllegalAccess = 0x3014,
+    UnknownMember = 0x3015,
+    TargetNotCallable = 0x3016,
     // CodeGen errors
 }
 

@@ -2,4 +2,7 @@ space Vectra.Test.Dependency;
 
 class TestRunner
 {
+	void RunTests()
+	{
+	}
 }

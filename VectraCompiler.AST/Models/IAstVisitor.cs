@@ -33,6 +33,7 @@ public interface IAstVisitor<out T>
     T VisitExpressionStatement(ExpressionStatementNode node);
     T VisitReturnStatement(ReturnStatementNode node);
     T VisitVariableDeclarationStatement(VariableDeclarationStatementNode node);
+    T VisitBlockStatement(BlockStatementNode node);
 
     #endregion
 }

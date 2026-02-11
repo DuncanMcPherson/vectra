@@ -69,7 +69,7 @@ public sealed class Parser(List<Token> tokens, string file)
 
             // Absolute safety: never allow no-progress loops.
             if (_position == start)
-                Advance(); // consume something to avoid infinite loop
+                Advance(); // consume something to avoid an infinite loop
         }
 
         space.AddTypes(types);
@@ -122,7 +122,7 @@ public sealed class Parser(List<Token> tokens, string file)
                 Advance();
         }
 
-        // Consume closing brace if present; otherwise report missing brace at EOF.
+        // Consume closing brace if present; otherwise report a missing brace at EOF.
         if (!Match("}"))
         {
             if (IsAtEnd())
@@ -200,7 +200,7 @@ public sealed class Parser(List<Token> tokens, string file)
             }
         }
 
-        Expect("{", "Expected '{' to start method body");
+        var bodyStart = Consume("{", "Expected '{' to start method body");
 
         var statements = new List<IStatementNode>();
 
@@ -229,10 +229,15 @@ public sealed class Parser(List<Token> tokens, string file)
                 Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close constructor body", Peek());
         }
 
+        var body = new BlockStatementNode(new SourceSpan(bodyStart.Position, PreviousOrPeek().Position))
+        {
+            Statements = statements
+        };
+
         return new ConstructorDeclarationNode(
             classToken.Value,
             parameters,
-            statements,
+            body,
             new SourceSpan(
                 classToken.Position.Line,
                 classToken.Position.Column,
@@ -273,7 +278,7 @@ public sealed class Parser(List<Token> tokens, string file)
             }
         }
 
-        Expect("{", "Expected '{' to start method body");
+        var bodyStart = Consume("{", "Expected '{' to start method body");
 
         var statements = new List<IStatementNode>();
 
@@ -301,11 +306,17 @@ public sealed class Parser(List<Token> tokens, string file)
             else
                 Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close method body", Peek());
         }
+        
+        var body = new BlockStatementNode(new SourceSpan(bodyStart.Position, PreviousOrPeek().Position))
+        {
+            Statements = statements
+        };
+
 
         return new MethodDeclarationNode(
             nameToken.Value,
             parameters,
-            statements,
+            body,
             typeToken.Value,
             new SourceSpan(
                 typeToken.Position.Line,
@@ -326,7 +337,7 @@ public sealed class Parser(List<Token> tokens, string file)
 
         var initializer = ParseExpression();
 
-        // If '}' comes next, semicolon is almost certainly missing (your error #3 style).
+        // If '}' comes next, a semicolon is almost certainly missing (your error #3 style).
         if (Check("}"))
         {
             Report(ErrorCode.ExpectedTokenMissing, "Expected ';' after field initializer", Peek());
@@ -529,9 +540,8 @@ public sealed class Parser(List<Token> tokens, string file)
 
         return token.Type switch
         {
-            TokenType.Number or TokenType.String => new LiteralExpressionNode(token.Value,
-                new SourceSpan(token.Position, Peek().Position)),
-
+            TokenType.Number or TokenType.String => ParseLiteralExpression(token),
+            TokenType.Keyword when token.Value == "true" || token.Value == "false" => ParseLiteralExpression(token),
             TokenType.Identifier => ParsePostfix(new IdentifierExpressionNode(token.Value,
                 new SourceSpan(token.Position, Peek().Position))),
 
@@ -542,6 +552,20 @@ public sealed class Parser(List<Token> tokens, string file)
 
             _ => throw Error(ErrorCode.UnexpectedToken, $"Unexpected token '{token.Value}' in expression", token)
         };
+    }
+
+    private LiteralExpressionNode ParseLiteralExpression(Token token)
+    {
+        object value = token.Type switch
+        {
+            TokenType.Number when !token.Value.Contains('.') => int.Parse(token.Value),
+            TokenType.Number when token.Value.Contains('.') => double.Parse(token.Value),
+            TokenType.String => token.Value,
+            TokenType.Keyword when token.Value == "true" => true,
+            TokenType.Keyword when token.Value == "false" => false,
+            _ => throw Error(ErrorCode.UnexpectedToken, $"Unexpected token '{token.Value}' in literal expression", token)
+        };
+        return new LiteralExpressionNode(value, new SourceSpan(token.Position, Peek().Position));
     }
 
     private IExpressionNode ParsePostfix(IExpressionNode expr)
@@ -635,7 +659,7 @@ public sealed class Parser(List<Token> tokens, string file)
     }
 
     /// <summary>
-    /// Skip tokens until we’re likely at the start of the next top-level declaration.
+    /// Skip tokens until weï¿½re likely at the start of the next top-level declaration.
     /// </summary>
     private void SynchronizeTopLevel()
     {
@@ -740,6 +764,15 @@ public sealed class Parser(List<Token> tokens, string file)
         if (Peek().Type != type)
             throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected {type}", Peek());
 
+        return Advance();
+    }
+
+    private Token Consume(string lexeme, string errorMessage)
+    {
+        if (IsAtEnd())
+            throw Error(ErrorCode.UnexpectedEndOfFile, $"Expected token: '{lexeme}', but reached end of file.", PreviousOrPeek());
+        if (Peek().Value != lexeme)
+            throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected '{lexeme}'", Peek());
         return Advance();
     }
 

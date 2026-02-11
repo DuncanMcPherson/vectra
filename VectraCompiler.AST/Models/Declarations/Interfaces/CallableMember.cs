@@ -5,7 +5,7 @@ public abstract class CallableMember : AstNodeBase, IMemberNode
 {
     public abstract string Name { get; }
     public abstract IList<VParameter> Parameters { get; }
-    public abstract IList<IStatementNode> Body { get; }
+    public abstract BlockStatementNode Body { get; }
     public abstract override SourceSpan Span { get; }
     public abstract override T Visit<T>(IAstVisitor<T> visitor);
     

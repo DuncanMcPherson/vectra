@@ -1,4 +1,6 @@
-﻿namespace VectraCompiler.Core.Logging;
+﻿using VectraCompiler.Core.Errors;
+
+namespace VectraCompiler.Core.Logging;
 
 public static class Logger
 {
@@ -31,6 +33,22 @@ public static class Logger
     public static void LogTrace(string message)
     {
         LogTrace(CurrentPhase, message);
+    }
+
+    public static void LogDiagnostic(Diagnostic diagnostic)
+    {
+        switch (diagnostic.Severity)
+        {
+            case Severity.Error:
+                LogError($"{diagnostic.CodeString} {diagnostic.Message}");
+                break;
+            case Severity.Warning:
+                LogWarning($"{diagnostic.CodeString} {diagnostic.Message}");
+                break;
+            case Severity.Info:
+                LogInfo($"{diagnostic.CodeString} {diagnostic.Message}");
+                break;
+        }
     }
 
     public static void LogDebug(CompilePhase phase, string message)

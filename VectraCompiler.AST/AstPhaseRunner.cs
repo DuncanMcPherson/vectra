@@ -63,6 +63,8 @@ public static class AstPhaseRunner
                     modParseTask.StopTask();
                 }
 
+                var errorCount = db.Items.Count(x => x.Severity == Severity.Error);
+                Logger.LogInfo($"Parsing completed with {errorCount} error{(errorCount != 1 ? "s" : "")}.");
                 return db.HasErrors ? Result<VectraAstPackage>.Fail(db) : Result<VectraAstPackage>.Pass(package, db);
             });
     }

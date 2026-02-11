@@ -1,3 +1,5 @@
+using VectraCompiler.Core.Logging;
+
 namespace VectraCompiler.Core.Errors;
 
 public enum Severity
@@ -27,6 +29,7 @@ public sealed class DiagnosticBag
 
     public DiagnosticBag Add(Diagnostic diagnostic)
     {
+        Logger.LogDiagnostic(diagnostic);
         _items.Add(diagnostic);
         return this;
     }

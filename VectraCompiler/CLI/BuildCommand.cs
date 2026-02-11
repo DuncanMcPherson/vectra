@@ -2,6 +2,8 @@ using JetBrains.Annotations;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using VectraCompiler.AST;
+using VectraCompiler.Bind;
+using VectraCompiler.Core.Errors;
 using VectraCompiler.Core.Logging;
 using VectraCompiler.Package;
 using Extensions = VectraCompiler.Core.Extensions;
@@ -26,7 +28,11 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
         var modGraph = res.Value.Item1;
         var packageName = res.Value.Item2;
         var packageAst = await AstPhaseRunner.CompileModules(packageName, modGraph.Order, cancellationToken);
-        return packageAst.Ok ? 0 : 1;
+        if (!packageAst.Ok) return 1;
+
+        var package = packageAst.Value!;
+        var bindResult = await BindPhaseRunner.RunInitialBindingAsync(package, cancellationToken);
+        return bindResult.Ok ? 0 : 1;
     }
 
 }
