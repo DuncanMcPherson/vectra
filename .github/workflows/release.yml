@@ -1,0 +1,12 @@
+name: Release
+
+on:
+    push:
+        branches:
+            - master
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - run: Echo "Hello World"

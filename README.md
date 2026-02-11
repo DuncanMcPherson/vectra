@@ -129,7 +129,6 @@ Logging is handled via `VectraCompiler.Core.Logging.Logger`, which supports mult
 
 1. **Bound IR types**
 
-   Even if you start tiny, commit to the distinction:
   - `BoundStatement` / `BoundExpression`
     - Both carry:
       - `TypeSymbol` (for expressions; statements may have `void`/`none`)
@@ -166,3 +165,8 @@ Even if constructors are basically methods-with-void right now, separating them 
 - `BindExpression(ExpressionNode node, BindContext ctx)`
 
 Everything funnels through those. Internals can be partial classes by category so it stays readable.
+
+## Planned Features
+- Full semantic analysis and type checking
+- Update check
+- Update command
