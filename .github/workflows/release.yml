@@ -34,7 +34,7 @@ jobs:
   build:
     name: Build and upload artifacts
     needs: version
-    if: ${{ needs.version.outputs.new_release_published == "true"" }}
+    if: ${{ needs.version.outputs.new_release_published == "true" }}
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ needs.version.outputs.tag}}
