@@ -34,6 +34,8 @@ public enum ErrorCode
     InvalidOperator = 0x3009,
     UnsupportedLiteral = 0x3010,
     TypeMismatch = 0x3011,
+    TypeNotConstructable = 0x3012,
+    CannotFindConstructor = 0x3013,
     // CodeGen errors
 }
 

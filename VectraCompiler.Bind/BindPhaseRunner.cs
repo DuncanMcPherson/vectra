@@ -86,7 +86,7 @@ public static class BindPhaseRunner
                 {
                     if (typeNode is not ClassDeclarationNode cdn)
                         continue;
-                    foreach (var memberNode in cdn.Members)
+                    foreach (var memberNode in cdn.Members.OfType<CallableMember>())
                     {
                         if (!declarations.SymbolsByNode.TryGetValue(memberNode, out var sym))
                             continue;
@@ -189,6 +189,11 @@ public static class BindPhaseRunner
                     break;
             }
         }
+        
+        var ctors = @class.Members.OfType<ConstructorDeclarationNode>();
+        if (ctors.Any()) return;
+        var defaultCtor = new ConstructorSymbol(typeSym, BindParameters(memberScope, typeSym, new List<VParameter>(), db));
+        memberScope.TryDeclare(defaultCtor);
     }
 
     private static void BindFunction(Scope scope, MethodDeclarationNode method, Dictionary<IAstNode, Symbol> symbolsByNode,

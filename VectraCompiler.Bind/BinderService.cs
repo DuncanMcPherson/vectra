@@ -296,9 +296,35 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
 
     private BoundExpression BindNewExpression(NewExpressionNode node, BindContext ctx)
     {
-        // TODO: handle object creation
-        ctx.Diagnostics.Error(ErrorCode.UnsupportedNode, "Object creation is not supported yet");
-        return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+        var type = ResolveType(node.TypeName, ctx);
+        if (type is not NamedTypeSymbol namedType)
+        {
+            ctx.Diagnostics.Error(ErrorCode.TypeNotConstructable, $"Type '{node.TypeName}' is not constructable");
+            return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+        }
+
+        var args = node.Arguments.Select(a => BindExpression(a, ctx)).ToArray();
+        if (!ctx.TryGetMemberScope(namedType, out var ctorScope))
+        {
+            ctx.Diagnostics.Error(ErrorCode.TypeNotFound, $"Cannot find constructor scope for type '{namedType.Name}'");
+            return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+        }
+        
+        var ctors = ctorScope.Lookup(namedType.Name).OfType<ConstructorSymbol>().ToArray();
+        if (ctors.Length == 0)
+        {
+            ctx.Diagnostics.Error(ErrorCode.CannotFindConstructor, $"Type '{type.Name}' has no constructors");
+            return new BoundErrorExpression(node.Span, type);
+        }
+
+        var requestedArity = args.Length + 1; // add 1 for 'this' parameter
+        var ctor = ctors.FirstOrDefault(c => c.Arity == requestedArity);
+        if (ctor is null)
+        {
+            ctx.Diagnostics.Error(ErrorCode.CannotFindConstructor, $"Cannot find constructor for '{type.Name}' with {requestedArity - 1} arguments");
+            return new BoundErrorExpression(node.Span, type);
+        }
+        return new BoundNewExpression(node.Span, namedType, ctor, args);
     }
 
     private TypeSymbol ResolveType(string typeName, BindContext ctx)

@@ -28,6 +28,12 @@ Vectra is structured around "spaces" (namespaces) and classes.
 - **Control Flow**: `return`, `get`, `set`
 - **Literals**: `true`, `false`
 
+#### Temporary builtins
+- `Print(string)`
+- `Read()`
+
+**Note:** These builtins are temporary and will be removed in a future release. They are intended to enhance the developer experience while the language is in development. Using them in production code is not recommended.
+
 ### Operators
 - **Arithmetic**: `+`, `-`, `*`, `/`, `%`
 - **Comparison**: `==`, `!=`, `<`, `>`, `<=`, `>=`
