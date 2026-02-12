@@ -17,6 +17,9 @@ internal static class Program
                 .WithDescription("Build a vectra package or module");
             config.AddCommand<ExplainCommand>("explain")
                 .WithDescription("Explain a Vectra error code");
+            config.AddCommand<VersionCommand>("version")
+                .WithAlias("--version")
+                .WithAlias("v");
             // TODO: run, test, publish
             config.PropagateExceptions();
         });
