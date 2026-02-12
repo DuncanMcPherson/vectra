@@ -20,7 +20,8 @@ public sealed class UpdateCommand : AsyncCommand<UpdateCommand.Settings>
     private const string GitHubRepo = "DuncanMcPherson/vectra";
     private const string GitHubApiUrl = $"https://api.github.com/repos/{GitHubRepo}/releases/latest";
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings,
+        CancellationToken cancellationToken)
     {
         var currentVersion = GetCurrentVersion();
         AnsiConsole.MarkupLine($"Current version: [cyan]{currentVersion}[/]");
@@ -39,13 +40,13 @@ public sealed class UpdateCommand : AsyncCommand<UpdateCommand.Settings>
             AnsiConsole.MarkupLine("[green]You are already on the latest version![/]");
             return 0;
         }
-        
+
         if (settings.CheckOnly)
         {
-            AnsiConsole.MarkupLine($"[yellow]Update available:[/] {currentVersion} → {latestVersion}");
+            AnsiConsole.MarkupLine($"[yellow]Update available:[/] {currentVersion} -> {latestVersion}");
             return 0;
         }
-        
+
         return await PerformUpdateAsync(latestRelease, cancellationToken);
     }
 
@@ -79,7 +80,7 @@ public sealed class UpdateCommand : AsyncCommand<UpdateCommand.Settings>
             return null;
         }
     }
-    
+
     private static async Task<int> PerformUpdateAsync(GitHubRelease release, CancellationToken cancellationToken)
     {
         // Determine current platform
@@ -94,15 +95,76 @@ public sealed class UpdateCommand : AsyncCommand<UpdateCommand.Settings>
         }
 
         AnsiConsole.MarkupLine($"Downloading update from: [blue]{asset.BrowserDownloadUrl}[/]");
-        
+
         // TODO: Implement download and replacement logic
-        // This is the tricky part - we need to:
-        // 1. Download the new version to a temp location
-        // 2. Extract it
-        // 3. Replace the current executable (requires special handling since it's running)
-        
-        AnsiConsole.MarkupLine("[yellow]Update download not yet implemented[/]");
-        return 1;
+        // 1. Download the asset to a temporary location
+        var tempDir = Path.Combine(Path.GetTempPath(), "vectra-update");
+        Directory.CreateDirectory(tempDir);
+        var zipPath = Path.Combine(tempDir, assetName);
+        var extractPath = Path.Combine(tempDir, "extracted");
+
+        try
+        {
+            await DownloadFileAsync(asset.BrowserDownloadUrl, zipPath, asset.Size, cancellationToken);
+            AnsiConsole.MarkupLine("[green]Download complete![/]");
+
+            // 2. Extract it
+            AnsiConsole.MarkupLine("Extracting files...");
+            if (Directory.Exists(extractPath))
+                Directory.Delete(extractPath, true);
+
+            await System.IO.Compression.ZipFile.ExtractToDirectoryAsync(zipPath, extractPath, cancellationToken);
+            AnsiConsole.MarkupLine("[green]Extraction complete![/]");
+            // TODO: Implement extract and replace
+            // 3. Replace the current executable (requires special handling since it's running)
+            AnsiConsole.MarkupLine("[yellow]Installation not yet implemented.[/]");
+
+            AnsiConsole.MarkupLine($"[dim]Extracted files are at: {extractPath}[/]");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Download failed: {ex.Message}[/]");
+            return 1;
+        }
+    }
+
+    private static async Task DownloadFileAsync(string url, string destinationPath, long totalBytes,
+        CancellationToken ct)
+    {
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("User-Agent", "vectra-cli");
+        using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+
+        await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
+        await using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write,
+            FileShare.None, 8192, true);
+
+        var buffer = new byte[8192];
+        long totalRead = 0;
+        int bytesRead;
+
+        await AnsiConsole.Progress()
+            .AutoClear(false)
+            .Columns(
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+                new DownloadedColumn(),
+                new TransferSpeedColumn(),
+                new RemainingTimeColumn())
+            .StartAsync(async ctx =>
+            {
+                var task = ctx.AddTask("[green]Downloading[/]", maxValue: totalBytes);
+                while ((bytesRead = await contentStream.ReadAsync(buffer, ct)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+                    totalRead += bytesRead;
+                    task.Value = totalRead;
+                }
+                task.StopTask();
+            });
     }
 
     private static string GetCurrentPlatform()
@@ -116,19 +178,18 @@ public sealed class UpdateCommand : AsyncCommand<UpdateCommand.Settings>
 
     private class GitHubRelease
     {
-        [JsonPropertyName("tag_name")]
-        public string TagName { get; set; } = string.Empty;
-        
-        [JsonPropertyName("assets")]
-        public List<GitHubAsset> Assets { get; set; } = [];
+        [JsonPropertyName("tag_name")] public string TagName { get; set; } = string.Empty;
+
+        [JsonPropertyName("assets")] public List<GitHubAsset> Assets { get; set; } = [];
     }
 
     private class GitHubAsset
     {
-        [JsonPropertyName("name")]
-        public string Name { get; set; } = string.Empty;
-        
+        [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
+
         [JsonPropertyName("browser_download_url")]
         public string BrowserDownloadUrl { get; set; } = string.Empty;
+
+        [JsonPropertyName("size")] public long Size { get; set; }
     }
 }
