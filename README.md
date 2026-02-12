@@ -1,4 +1,9 @@
 # Vectra Compiler
+![GitHub Release](https://img.shields.io/github/v/release/DuncanMcPherson/vectra)
+[![Release](https://github.com/DuncanMcPherson/vectra/actions/workflows/release.yml/badge.svg)](https://github.com/DuncanMcPherson/vectra/actions/workflows/release.yml)
+![GitHub License](https://img.shields.io/github/license/DuncanMcPherson/vectra)
+![GitHub Release Date](https://img.shields.io/github/release-date/DuncanMcPherson/vectra)
+
 
 Vectra is a modern, statically-typed programming language. This repository contains the source code for the Vectra Compiler, built on .NET 10.
 
