@@ -2,9 +2,14 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
+        <AssemblyName>vecc-compiler</AssemblyName>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <Version>0.0.0-dev</Version>
+        <AssemblyInformationalVersion>$(Version)</AssemblyInformationalVersion>
+        <ContinuousIntegrationBuild>false</ContinuousIntegrationBuild>
+        <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
     </PropertyGroup>
 
     <ItemGroup>
