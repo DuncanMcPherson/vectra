@@ -51,7 +51,7 @@ public sealed class UninitializedVariableAnalyzer : IAnalyzer
     {
         switch (expr)
         {
-            case BoundLocalExpression { Local: not FieldSymbol or PropertySymbol } local:
+            case BoundLocalExpression { Local: not (FieldSymbol or PropertySymbol) } local:
                 if (!assigned.Contains(local.Local))
                     diagnostics.Error(
                         ErrorCode.UseOfUninitializedVariable,
