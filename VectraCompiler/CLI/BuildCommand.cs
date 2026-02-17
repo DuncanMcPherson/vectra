@@ -1,17 +1,14 @@
-using JetBrains.Annotations;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using VectraCompiler.AST;
 using VectraCompiler.Bind;
-using VectraCompiler.Core.Errors;
 using VectraCompiler.Core.Logging;
 using VectraCompiler.Package;
 using Extensions = VectraCompiler.Core.Extensions;
 
 namespace VectraCompiler.CLI;
 
-[UsedImplicitly]
-public sealed class BuildCommand : AsyncCommand<BuildSettings>
+internal sealed class BuildCommand : AsyncCommand<BuildSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BuildSettings settings,
         CancellationToken cancellationToken)
