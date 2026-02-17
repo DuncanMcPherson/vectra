@@ -39,6 +39,12 @@ public enum ErrorCode
     IllegalAccess = 0x3014,
     UnknownMember = 0x3015,
     TargetNotCallable = 0x3016,
+    // Analysis errors
+    MissingReturnPath = 0x4001,
+    UnreachableCode = 0x4002,
+    UseOfUninitializedVariable = 0x4003,
+    UnusedVariable = 0x4004,
+    UnusedParameter = 0x4005,
     // CodeGen errors
 }
 

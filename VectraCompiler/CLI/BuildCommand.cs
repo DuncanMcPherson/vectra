@@ -1,5 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using VectraCompiler.Analysis;
 using VectraCompiler.AST;
 using VectraCompiler.Bind;
 using VectraCompiler.Core.Logging;
@@ -29,7 +30,10 @@ internal sealed class BuildCommand : AsyncCommand<BuildSettings>
 
         var package = packageAst.Value!;
         var bindResult = await BindPhaseRunner.RunInitialBindingAsync(package, cancellationToken);
-        return bindResult.Ok ? 0 : 1;
+        if (!bindResult.Ok)
+            return 1;
+        var analyzeResult = await AnalyzePhaseRunner.RunAsync(bindResult.Value!, cancellationToken);
+        return analyzeResult.Ok ? 0 : 1;
     }
 
 }

@@ -13,6 +13,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\VectraCompiler.Analysis\VectraCompiler.Analysis.csproj" />
       <ProjectReference Include="..\VectraCompiler.AST\VectraCompiler.AST.csproj" />
       <ProjectReference Include="..\VectraCompiler.Bind\VectraCompiler.Bind.csproj" />
       <ProjectReference Include="..\VectraCompiler.Core\VectraCompiler.Core.csproj" />

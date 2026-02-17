@@ -1,6 +1,5 @@
-using VectraCompiler.AST.Models;
-using VectraCompiler.Bind.Models;
 using VectraCompiler.Bind.Models.Symbols;
+using VectraCompiler.Core;
 
 namespace VectraCompiler.Bind.Bodies.Expressions;
 

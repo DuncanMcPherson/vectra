@@ -1,5 +1,6 @@
 using VectraCompiler.AST.Models.Declarations.Interfaces;
 using VectraCompiler.AST.Models.Expressions;
+using VectraCompiler.Core;
 
 namespace VectraCompiler.AST.Models.Declarations;
 

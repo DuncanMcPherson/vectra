@@ -4,6 +4,7 @@ using VectraCompiler.AST.Models.Declarations;
 using VectraCompiler.AST.Models.Declarations.Interfaces;
 using VectraCompiler.AST.Models.Expressions;
 using VectraCompiler.AST.Models.Statements;
+using VectraCompiler.Core;
 using VectraCompiler.Core.Errors;
 
 namespace VectraCompiler.AST;

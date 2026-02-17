@@ -1,3 +1,5 @@
+using VectraCompiler.Core;
+
 namespace VectraCompiler.AST.Models.Expressions;
 
 public class NewExpressionNode(string typeName, IList<IExpressionNode> arguments, SourceSpan span) : AstNodeBase, IExpressionNode
