@@ -1,4 +1,6 @@
 using VectraCompiler.AST.Models.Statements;
+using VectraCompiler.Core;
+
 namespace VectraCompiler.AST.Models.Declarations.Interfaces;
 
 public abstract class CallableMember : AstNodeBase, IMemberNode

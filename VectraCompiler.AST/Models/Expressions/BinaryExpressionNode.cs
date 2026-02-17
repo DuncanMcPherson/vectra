@@ -1,3 +1,5 @@
+using VectraCompiler.Core;
+
 namespace VectraCompiler.AST.Models.Expressions;
 
 public class BinaryExpressionNode(string op, IExpressionNode left, IExpressionNode right, SourceSpan span) : AstNodeBase, IExpressionNode

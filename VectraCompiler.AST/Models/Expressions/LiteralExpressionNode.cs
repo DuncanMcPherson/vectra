@@ -1,3 +1,5 @@
+using VectraCompiler.Core;
+
 namespace VectraCompiler.AST.Models.Expressions;
 
 public class LiteralExpressionNode(object value, SourceSpan span) : AstNodeBase, IExpressionNode

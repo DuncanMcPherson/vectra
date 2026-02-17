@@ -1,4 +1,6 @@
-﻿namespace VectraCompiler.AST.Lexing.Models;
+﻿using VectraCompiler.Core;
+
+namespace VectraCompiler.AST.Lexing.Models;
 
 public class Token(TokenType type, string value, TokenPosition position)
 {
@@ -11,5 +13,3 @@ public class Token(TokenType type, string value, TokenPosition position)
         return $"({Type}) \"{Value}\": (Line: {Position.Line}, Column: {Position.Column})";
     }
 }
-
-public record TokenPosition(int Line, int Column);

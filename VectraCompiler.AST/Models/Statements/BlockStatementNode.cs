@@ -1,3 +1,5 @@
+using VectraCompiler.Core;
+
 namespace VectraCompiler.AST.Models.Statements;
 
 public class BlockStatementNode(SourceSpan span) : AstNodeBase, IStatementNode

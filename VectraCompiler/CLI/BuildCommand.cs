@@ -1,17 +1,15 @@
-using JetBrains.Annotations;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using VectraCompiler.Analysis;
 using VectraCompiler.AST;
 using VectraCompiler.Bind;
-using VectraCompiler.Core.Errors;
 using VectraCompiler.Core.Logging;
 using VectraCompiler.Package;
 using Extensions = VectraCompiler.Core.Extensions;
 
 namespace VectraCompiler.CLI;
 
-[UsedImplicitly]
-public sealed class BuildCommand : AsyncCommand<BuildSettings>
+internal sealed class BuildCommand : AsyncCommand<BuildSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BuildSettings settings,
         CancellationToken cancellationToken)
@@ -32,7 +30,10 @@ public sealed class BuildCommand : AsyncCommand<BuildSettings>
 
         var package = packageAst.Value!;
         var bindResult = await BindPhaseRunner.RunInitialBindingAsync(package, cancellationToken);
-        return bindResult.Ok ? 0 : 1;
+        if (!bindResult.Ok)
+            return 1;
+        var analyzeResult = await AnalyzePhaseRunner.RunAsync(bindResult.Value!, cancellationToken);
+        return analyzeResult.Ok ? 0 : 1;
     }
 
 }

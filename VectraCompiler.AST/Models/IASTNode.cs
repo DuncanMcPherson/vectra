@@ -1,3 +1,5 @@
+using VectraCompiler.Core;
+
 namespace VectraCompiler.AST.Models;
 
 /// <summary>

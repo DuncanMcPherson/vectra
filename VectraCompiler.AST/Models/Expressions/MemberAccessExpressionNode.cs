@@ -1,3 +1,5 @@
+using VectraCompiler.Core;
+
 namespace VectraCompiler.AST.Models.Expressions;
 
 public class MemberAccessExpressionNode : AstNodeBase, IExpressionNode
