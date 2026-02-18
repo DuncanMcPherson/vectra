@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-using VectraCompiler.AST.Models;
 using VectraCompiler.AST.Models.Expressions;
 using VectraCompiler.AST.Models.Statements;
 using VectraCompiler.Bind.Bodies;
@@ -202,7 +200,23 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             return new BoundReturnStatement(node.Span, null);
         }
 
-        var expr = BindExpression(node.Value, ctx.WithExpectedType(expected));
+        if (expected == BuiltInTypeSymbol.Void)
+        {
+            if (node.Value is not null)
+            {
+                ctx.Diagnostics.Error(ErrorCode.IllegalStatement, "Cannot return a value from a void method");
+                _ = BindExpression(node.Value, ctx);
+                return new BoundReturnStatement(node.Span, null);
+            }
+        }
+
+        var expr = BindExpression(node.Value!, ctx.WithExpectedType(expected));
+
+        if (!ReferenceEquals(expr.Type, BuiltInTypeSymbol.Error) && !ReferenceEquals(expr.Type, expected))
+        {
+            ctx.Diagnostics.Error(ErrorCode.TypeMismatch,
+                $"'{ctx.ContainingCallable!.Name}': cannot return '{expr.Type.Name}' from a method with return type '{expected.Name}'.");
+        }
         return new BoundReturnStatement(node.Span, expr);
     }
 
@@ -288,6 +302,18 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
         }
         var best = functions.FirstOrDefault(f => f.Arity == args.Length + 1) ?? functions.First();
+        var expectedParams = best.Parameters.Skip(1).ToArray();
+        for (var i = 0; i < args.Length && i < expectedParams.Length; i++)
+        {
+            var argType = args[i].Type;
+            var paramType = expectedParams[i].Type;
+            if (!ReferenceEquals(argType, BuiltInTypeSymbol.Error) &&
+                !ReferenceEquals(argType, paramType))
+            {
+                ctx.Diagnostics.Error(ErrorCode.TypeMismatch,
+                    $"Argument {i + 1} of '{best.Name}' has type '{argType.Name}', but expected '{paramType.Name}'.", args[i].Span);
+            }
+        }
         return new BoundCallExpression(node.Span, best, boundAccess.Receiver, args);
     }
 
