@@ -49,7 +49,7 @@ public static class BindPhaseRunner
                     foreach (var file in module.Files.Select(p => p.Tree))
                     {
                         ct.ThrowIfCancellationRequested();
-                        BindSpaceDeclaration(moduleScope, file.Space, module.ModuleName, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes, typeNodesBySymbol);
+                        BindSpaceDeclaration(moduleScope, file.Space, module.ModuleName, file.FilePath, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes, typeNodesBySymbol);
                     }
                     task.Increment(1);
                 }
@@ -61,7 +61,9 @@ public static class BindPhaseRunner
                     var typeNode = symbolsByNode.First(sbn => sbn.Value == typeSym).Key;
                     if (typeNode is not ITypeDeclarationNode decl)
                         continue;
-                    BindMember(decl, symbolsByNode, typeMemberScopes, db, containingTypeByNode);
+                    
+                    var filePath = typeSym.SourceFilePath;
+                    BindMember(decl, filePath ?? "Unknown", symbolsByNode, typeMemberScopes, db, containingTypeByNode);
                     membersTask.Increment(1);
                 }
                 membersTask.StopTask();
@@ -122,6 +124,7 @@ public static class BindPhaseRunner
         Scope parentScope,
         SpaceDeclarationNode space,
         string moduleName,
+        string filePath,
         Dictionary<IAstNode, Symbol> symbolsByNode,
         Dictionary<NamedTypeSymbol, Scope> typeMemberScopes,
         Dictionary<(string ModuleName, string QualifiedName), Scope> spacesByName,
@@ -134,16 +137,16 @@ public static class BindPhaseRunner
         spacesByName.TryAdd(scopeKey, spaceScope);
         foreach (var declaration in space.Declarations)
         {
-            BindDeclaration(spaceScope, declaration, space.QualifiedName, symbolsByNode, typeMemberScopes, db, typeNodesBySymbol);
+            BindDeclaration(spaceScope, declaration, space.QualifiedName, filePath, symbolsByNode, typeMemberScopes, db, typeNodesBySymbol);
         }
 
         foreach (var subspace in space.Subspaces)
         {
-            BindSpaceDeclaration(spaceScope, subspace, moduleName, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes, typeNodesBySymbol);
+            BindSpaceDeclaration(spaceScope, subspace, moduleName, filePath, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes, typeNodesBySymbol);
         }
     }
 
-    private static void BindMember(ITypeDeclarationNode type, Dictionary<IAstNode, Symbol> symbolsByNode,
+    private static void BindMember(ITypeDeclarationNode type, string filePath, Dictionary<IAstNode, Symbol> symbolsByNode,
         Dictionary<NamedTypeSymbol, Scope> typeMemberScopes, DiagnosticBag db, Dictionary<IMemberNode, NamedTypeSymbol> containingTypeByMemberNode)
     {
         // Soon we will have multiple types of type declaration nodes, so we will switch on the type to determine how to bind members
@@ -158,7 +161,10 @@ public static class BindPhaseRunner
                 case PropertyDeclarationNode pdn:
                     Logger.LogTrace($"Binding property '{pdn.Name}' in type '{typeSym.Name}'");
                     var propType = ResolveType(memberScope, pdn.Type, db);
-                    var propSym = new PropertySymbol(pdn.Name, propType, pdn.HasGetter, pdn.HasSetter);
+                    var propSym = new PropertySymbol(pdn.Name, propType, pdn.HasGetter, pdn.HasSetter)
+                    {
+                        DeclarationSpan = pdn.Span with { FilePath = filePath }
+                    };
                     if (!memberScope.TryDeclare(propSym))
                         // TODO: add access to the file name that is currently being bound
                         db.Error(ErrorCode.DuplicateSymbol, $"Property {pdn.Name} is already declared in {typeSym.Name}");
@@ -167,15 +173,21 @@ public static class BindPhaseRunner
                 case FieldDeclarationNode fdn:
                     Logger.LogTrace($"Binding field '{fdn.Name}' in type '{typeSym.Name}'");
                     var fieldType = ResolveType(memberScope, fdn.Type, db);
-                    var fieldSym = new FieldSymbol(fdn.Name, fieldType);
+                    var fieldSym = new FieldSymbol(fdn.Name, fieldType)
+                    {
+                        DeclarationSpan = fdn.Span with { FilePath = filePath }
+                    };
                     if (!memberScope.TryDeclare(fieldSym))
                         db.Error(ErrorCode.DuplicateSymbol, $"Field {fdn.Name} is already declared in {typeSym.Name}");
                     symbolsByNode[fdn] = fieldSym;
                     break;
                 case ConstructorDeclarationNode cdn:
                     Logger.LogTrace($"Binding constructor in type '{typeSym.Name}'");
-                    var parameters = BindParameters(memberScope, typeSym, cdn.Parameters, db);
-                    var ctorSym = new ConstructorSymbol(typeSym, parameters);
+                    var parameters = BindParameters(memberScope, typeSym, filePath, cdn.Parameters, db);
+                    var ctorSym = new ConstructorSymbol(typeSym, parameters)
+                    {
+                        DeclarationSpan = cdn.Span with { FilePath = filePath }
+                    };
                     if (!memberScope.TryDeclare(ctorSym))
                         db.Error(ErrorCode.DuplicateSymbol, $"Constructor is already declared in {typeSym.Name}({ctorSym.Arity})");
                     symbolsByNode[cdn] = ctorSym;
@@ -183,7 +195,7 @@ public static class BindPhaseRunner
                     break;
                 case MethodDeclarationNode mdn:
                     Logger.LogTrace($"Binding method '{mdn.Name}' in type '{typeSym.Name}'");
-                    BindFunction(memberScope, mdn, symbolsByNode, typeSym, db);
+                    BindFunction(memberScope, mdn, filePath, symbolsByNode, typeSym, db);
                     containingTypeByMemberNode[mdn] = typeSym;
                     break;
                 default:
@@ -194,18 +206,24 @@ public static class BindPhaseRunner
         
         var ctors = @class.Members.OfType<ConstructorDeclarationNode>();
         if (ctors.Any()) return;
-        var defaultCtor = new ConstructorSymbol(typeSym, BindParameters(memberScope, typeSym, new List<VParameter>(), db));
+        var defaultCtor = new ConstructorSymbol(typeSym, BindParameters(memberScope, typeSym, filePath, new List<VParameter>(), db))
+        {
+            DeclarationSpan = type.Span with { FilePath = filePath } // Use the class span for the default constructor
+        };
         memberScope.TryDeclare(defaultCtor);
     }
 
-    private static void BindFunction(Scope scope, MethodDeclarationNode method, Dictionary<IAstNode, Symbol> symbolsByNode,
+    private static void BindFunction(Scope scope, MethodDeclarationNode method, string filePath, Dictionary<IAstNode, Symbol> symbolsByNode,
         NamedTypeSymbol typeSym, DiagnosticBag db)
     {
         var funcName = method.Name;
         var returnType = ResolveType(scope, method.ReturnType, db);
         Logger.LogTrace($"Return type of function '{funcName}' is '{returnType.Name}'");
-        var parameters = BindParameters(scope, typeSym, method.Parameters, db);
-        var funcSym = new MethodSymbol(funcName, returnType, parameters);
+        var parameters = BindParameters(scope, typeSym, filePath, method.Parameters, db);
+        var funcSym = new MethodSymbol(funcName, returnType, parameters)
+        {
+            DeclarationSpan = method.Span with { FilePath = filePath }
+        };
         if (!scope.TryDeclare(funcSym))
         {
             db.Error(ErrorCode.DuplicateSymbol, $"Function {funcName} is already declared in {typeSym.Name}");
@@ -215,14 +233,17 @@ public static class BindPhaseRunner
         symbolsByNode[method] = funcSym;
     }
 
-    private static void BindDeclaration(Scope parentScope, ITypeDeclarationNode type, string parentFullName,
+    private static void BindDeclaration(Scope parentScope, ITypeDeclarationNode type, string parentFullName, string filePath,
         Dictionary<IAstNode, Symbol> symbolsByNode,
         Dictionary<NamedTypeSymbol, Scope> typeMemberScopes, DiagnosticBag db,
         Dictionary<NamedTypeSymbol, ITypeDeclarationNode> typeNodesBySymbol)
     {
         Logger.LogTrace($"Binding declaration '{type.Name}' in scope '{parentFullName}'");
         var fullName = $"{parentFullName}.{type.Name}";
-        var typeSym = new NamedTypeSymbol(type.Name, fullName, NamedTypeKind.Class);
+        var typeSym = new NamedTypeSymbol(type.Name, fullName, NamedTypeKind.Class)
+        {
+            DeclarationSpan = type.Span with { FilePath = filePath }
+        };
         typeNodesBySymbol[typeSym] = type;
         if (!parentScope.TryDeclare(typeSym))
         {
@@ -232,7 +253,6 @@ public static class BindPhaseRunner
 
         symbolsByNode[type] = typeSym;
         var memberScope = new Scope(parentScope);
-        Logger.LogTrace($"Created member scope for type '{fullName}'");
         typeMemberScopes[typeSym] = memberScope;
     }
 
@@ -279,6 +299,7 @@ public static class BindPhaseRunner
     private static IReadOnlyList<ParameterSymbol> BindParameters(
         Scope lookupScope,
         NamedTypeSymbol? declaringType,
+        string filePath,
         IList<VParameter> parameters,
         DiagnosticBag db)
     {
@@ -286,7 +307,10 @@ public static class BindPhaseRunner
         var ordinal = 0;
         if (declaringType is not null)
         {
-            list.Add(new ParameterSymbol("this", declaringType, ordinal++));
+            list.Add(new ParameterSymbol("this", declaringType, ordinal++)
+            {
+                DeclarationSpan = declaringType.DeclarationSpan
+            });
             Logger.LogTrace($"Adding 'this' parameter for type '{declaringType.Name}' at index 0");
         }
 
@@ -299,7 +323,10 @@ public static class BindPhaseRunner
             var pType = ResolveType(lookupScope, p.Type, db);
             var pName = p.Name;
             Logger.LogTrace($"Binding parameter '{pName}' of type '{pType.Name}', at index {ordinal}");
-            list.Add(new ParameterSymbol(pName, pType, ordinal++));
+            list.Add(new ParameterSymbol(pName, pType, ordinal++)
+            {
+                DeclarationSpan = p.Span with { FilePath = filePath }
+            });
         }
 
         return list;

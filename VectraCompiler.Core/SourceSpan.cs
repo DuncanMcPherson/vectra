@@ -1,8 +1,9 @@
 ﻿namespace VectraCompiler.Core;
 
-public record SourceSpan(int StartLine, int StartColumn, int EndLine, int EndColumn)
+public record SourceSpan(int StartLine, int StartColumn, int EndLine, int EndColumn, string? FilePath = null)
 {
-    public SourceSpan(TokenPosition start, TokenPosition end) : this(start.Line, start.Column, end.Line, end.Column)
+    public SourceSpan(TokenPosition start, TokenPosition end, string? filePath = null) 
+        : this(start.Line, start.Column, end.Line, end.Column, filePath)
     {
     }
     

@@ -31,4 +31,11 @@ public sealed class Scope
                 return list;
         return [];
     }
+
+    public IEnumerable<Symbol> AllSymbols()
+    {
+        foreach (var list in _symbols.Values)
+        foreach (var symbol in list)
+            yield return symbol;
+    }
 }

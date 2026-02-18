@@ -54,9 +54,11 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
     {
         declarations.TypeMemberScopes.TryGetValue(containingType, out var memberScope);
         var localScope = new Scope(memberScope);
+        var slotAllocator = new SlotAllocator();
 
         foreach (var parameter in ctor.Parameters)
         {
+            parameter.SlotIndex = slotAllocator.Allocate();
             if (!localScope.TryDeclare(parameter))
             {
                 diagnostics.Error(ErrorCode.DuplicateSymbol, $"Parameter '{parameter.Name}' is already declared.");
@@ -71,7 +73,8 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             ContainingType = containingType,
             ContainingCallable = ctor,
             ExpectedType = containingType,
-            IsLValueTarget = false
+            IsLValueTarget = false,
+            SlotAllocator = slotAllocator
         };
         return BindBlock(body, ctx);
     }
@@ -83,9 +86,11 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
     {
         declarations.TypeMemberScopes.TryGetValue(containingType, out var memberScope);
         var localScope = new Scope(memberScope);
+        var slotAllocator = new SlotAllocator();
 
         foreach (var parameter in method.Parameters)
         {
+            parameter.SlotIndex = slotAllocator.Allocate();
             if (!localScope.TryDeclare(parameter))
             {
                 diagnostics.Error(ErrorCode.DuplicateSymbol, $"Parameter '{parameter.Name}' is already declared.");
@@ -100,7 +105,8 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             ContainingType = containingType,
             ContainingCallable = method,
             ExpectedType = method.ReturnType,
-            IsLValueTarget = false
+            IsLValueTarget = false,
+            SlotAllocator = slotAllocator
         };
         return BindBlock(body, ctx);
     }
@@ -150,7 +156,11 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
                 init = ConvertIfNeeded(init, declaredType, ctx, node.Span);
             }
 
-            var local = new LocalSymbol(node.Name, declaredType);
+            var local = new LocalSymbol(node.Name, declaredType)
+            {
+                DeclarationSpan = node.Span with { FilePath = ctx.ContainingCallable?.SourceFilePath },
+                SlotIndex = ctx.SlotAllocator.Allocate()
+            };
             DeclareLocal(local, ctx);
             return new BoundVariableDeclarationStatement(node.Span, local, init);
         }
@@ -167,7 +177,11 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
                     $"Cannot infer type of '{node.Name}' from 'null'. Add an explicit type.");
             }
 
-            var local = new LocalSymbol(node.Name, inferredType);
+            var local = new LocalSymbol(node.Name, inferredType)
+            {
+                DeclarationSpan = node.Span with { FilePath = ctx.ContainingCallable?.SourceFilePath },
+                SlotIndex = ctx.SlotAllocator.Allocate()
+            };
             DeclareLocal(local, ctx);
             return new BoundVariableDeclarationStatement(node.Span, local, init);
         }
