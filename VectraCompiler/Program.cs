@@ -20,7 +20,6 @@ internal static class Program
             config.AddCommand<VersionCommand>("version")
                 .WithAlias("--version")
                 .WithAlias("v");
-            config.AddCommand<UpdateCommand>("update");
             // TODO: run, test, publish
             config.PropagateExceptions();
         });
