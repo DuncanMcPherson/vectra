@@ -82,6 +82,7 @@ public static class BindPhaseRunner
                 var binder = new BinderService(declarations, db);
 
                 var bodies = new Dictionary<Symbol, BoundBlockStatement>();
+                var allocators = new Dictionary<Symbol, SlotAllocator>();
                 var bodyTask = ctx.AddTask("Bind Symbols (Method and Constructor Bodies)",
                     maxValue: typeNodesBySymbol.Count);
                 foreach (var (typeSymbol, typeNode) in typeNodesBySymbol)
@@ -96,11 +97,13 @@ public static class BindPhaseRunner
                         {
                             case MethodSymbol m when memberNode is MethodDeclarationNode mdn:
                                 Logger.LogTrace($"Binding method body for {mdn.Name} in type {typeSymbol.Name}");
-                                bodies[sym] = binder.BindMethodBody(m, typeSymbol, mdn.Body);
+                                bodies[sym] = binder.BindMethodBody(m, typeSymbol, mdn.Body, out var allocator);
+                                allocators[sym] = allocator;
                                 break;
                             case ConstructorSymbol c when memberNode is ConstructorDeclarationNode cn:
                                 Logger.LogTrace($"Binding constructor body for {typeSymbol.Name}");
-                                bodies[sym] = binder.BindConstructorBody(c, typeSymbol, cn.Body);
+                                bodies[sym] = binder.BindConstructorBody(c, typeSymbol, cn.Body, out var alloc);
+                                allocators[sym] = alloc;
                                 break;
                         }
                     }
@@ -111,7 +114,8 @@ public static class BindPhaseRunner
                 var bodyBindResult = new BodyBindResult
                 {
                     BodiesByMember = bodies,
-                    Declarations = declarations
+                    Declarations = declarations,
+                    SlotAllocatorsByMember = allocators
                 };
                 var errorCount = db.Items.Count(x => x.Severity == Severity.Error);
                 Logger.LogInfo($"Binding completed with {errorCount} errors.");

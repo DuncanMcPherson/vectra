@@ -45,7 +45,9 @@ public enum ErrorCode
     UseOfUninitializedVariable = 0x4003,
     UnusedVariable = 0x4004,
     UnusedParameter = 0x4005,
-    // CodeGen errors
+    // Lowering Errors
+    UnsupportedStatement = 0x5001,
+    InternalError = 0xFFFF
 }
 
 public static class ErrorCodeExtensions

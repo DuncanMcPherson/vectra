@@ -50,15 +50,16 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
     public BoundBlockStatement BindConstructorBody(
         ConstructorSymbol ctor,
         NamedTypeSymbol containingType,
-        BlockStatementNode body)
+        BlockStatementNode body,
+        out SlotAllocator allocator)
     {
         declarations.TypeMemberScopes.TryGetValue(containingType, out var memberScope);
         var localScope = new Scope(memberScope);
-        var slotAllocator = new SlotAllocator();
+        allocator = new SlotAllocator();
 
         foreach (var parameter in ctor.Parameters)
         {
-            parameter.SlotIndex = slotAllocator.Allocate();
+            parameter.SlotIndex = allocator.Allocate();
             if (!localScope.TryDeclare(parameter))
             {
                 diagnostics.Error(ErrorCode.DuplicateSymbol, $"Parameter '{parameter.Name}' is already declared.");
@@ -74,7 +75,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             ContainingCallable = ctor,
             ExpectedType = containingType,
             IsLValueTarget = false,
-            SlotAllocator = slotAllocator
+            SlotAllocator = allocator
         };
         return BindBlock(body, ctx);
     }
@@ -82,15 +83,16 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
     public BoundBlockStatement BindMethodBody(
         MethodSymbol method,
         NamedTypeSymbol containingType,
-        BlockStatementNode body)
+        BlockStatementNode body,
+        out SlotAllocator allocator)
     {
         declarations.TypeMemberScopes.TryGetValue(containingType, out var memberScope);
         var localScope = new Scope(memberScope);
-        var slotAllocator = new SlotAllocator();
+        allocator = new SlotAllocator();
 
         foreach (var parameter in method.Parameters)
         {
-            parameter.SlotIndex = slotAllocator.Allocate();
+            parameter.SlotIndex = allocator.Allocate();
             if (!localScope.TryDeclare(parameter))
             {
                 diagnostics.Error(ErrorCode.DuplicateSymbol, $"Parameter '{parameter.Name}' is already declared.");
@@ -106,7 +108,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             ContainingCallable = method,
             ExpectedType = method.ReturnType,
             IsLValueTarget = false,
-            SlotAllocator = slotAllocator
+            SlotAllocator = allocator
         };
         return BindBlock(body, ctx);
     }

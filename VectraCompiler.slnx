@@ -23,10 +23,11 @@
   <Folder Name="/TestCode/Vectra.Test/src/Games/">
     <File Path="TestCode/Vectra.Test/src/Games/Fortnite.vec" />
   </Folder>
-  <Project Path="VectraCompiler.Analysis.Tests/VectraCompiler.Analysis.Tests.csproj" Id="b491e29c-6044-471c-b34b-9d289a3f23e6" />
-  <Project Path="VectraCompiler.Analysis/VectraCompiler.Analysis.csproj" Id="f629a1bc-f8ac-4c3f-867f-d86eac753b7b" />
+  <Project Path="VectraCompiler.Analysis.Tests/VectraCompiler.Analysis.Tests.csproj" />
+  <Project Path="VectraCompiler.Analysis/VectraCompiler.Analysis.csproj" />
   <Project Path="VectraCompiler.AST/VectraCompiler.AST.csproj" />
   <Project Path="VectraCompiler.Bind/VectraCompiler.Bind.csproj" />
+  <Project Path="VectraCompiler.Lower/VectraCompiler.Lower.csproj" />
   <Project Path="VectraCompiler.Core/VectraCompiler.Core.csproj" />
   <Project Path="VectraCompiler.Package/VectraCompiler.Package.csproj" />
   <Project Path="VectraCompiler/VectraCompiler.csproj" />
