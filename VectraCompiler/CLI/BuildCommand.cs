@@ -37,7 +37,11 @@ internal sealed class BuildCommand : AsyncCommand<BuildSettings>
         if (!analyzeResult.Ok)
             return 1;
         var lowerResult = await LowerPhaseRunner.RunAsync(analyzeResult.Value!, cancellationToken);
-        return lowerResult.Ok ? 0 : 1;
+        if (!lowerResult.Ok)
+            return 1;
+        var groupedModules = Grouper.Run(
+            lowerResult.Value!, res.Value.Item1.Order, package);
+        return groupedModules.Ok ? 0 : 1;
     }
 
 }
