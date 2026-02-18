@@ -1,6 +1,7 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
 using VectraCompiler.Analysis;
+using VectraCompiler.Lower;
 using VectraCompiler.AST;
 using VectraCompiler.Bind;
 using VectraCompiler.Core.Logging;
@@ -33,7 +34,10 @@ internal sealed class BuildCommand : AsyncCommand<BuildSettings>
         if (!bindResult.Ok)
             return 1;
         var analyzeResult = await AnalyzePhaseRunner.RunAsync(bindResult.Value!, cancellationToken);
-        return analyzeResult.Ok ? 0 : 1;
+        if (!analyzeResult.Ok)
+            return 1;
+        var lowerResult = await LowerPhaseRunner.RunAsync(analyzeResult.Value!, cancellationToken);
+        return lowerResult.Ok ? 0 : 1;
     }
 
 }

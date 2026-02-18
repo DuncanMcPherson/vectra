@@ -18,6 +18,7 @@
       <ProjectReference Include="..\VectraCompiler.Bind\VectraCompiler.Bind.csproj" />
       <ProjectReference Include="..\VectraCompiler.Core\VectraCompiler.Core.csproj" />
       <ProjectReference Include="..\VectraCompiler.Package\VectraCompiler.Package.csproj" />
+      <ProjectReference Include="..\VectraCompiler.Lower\VectraCompiler.Lower.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\VectraCompiler.Analysis\VectraCompiler.Analysis.csproj" />
+    <ProjectReference Include="..\VectraCompiler.Bind\VectraCompiler.Bind.csproj" />
+    <ProjectReference Include="..\VectraCompiler.Core\VectraCompiler.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.53.1" />
+  </ItemGroup>
+</Project>
