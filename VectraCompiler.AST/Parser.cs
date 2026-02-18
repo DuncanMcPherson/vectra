@@ -181,7 +181,7 @@ public sealed class Parser(List<Token> tokens, string file)
                 {
                     var typeToken = ConsumeTypeToken("Expected parameter type");
                     var nameToken = Consume(TokenType.Identifier, "Expected parameter name");
-                    parameters.Add(new VParameter(nameToken.Value, typeToken.Value));
+                    parameters.Add(new VParameter(nameToken.Value, typeToken.Value, new SourceSpan(typeToken.Position, nameToken.Position)));
                 } while (Match(","));
 
                 // Common recovery for your example: if '{' appears, treat ')' as missing.
@@ -259,7 +259,7 @@ public sealed class Parser(List<Token> tokens, string file)
                 {
                     var pTypeToken = ConsumeTypeToken("Expected parameter type");
                     var pNameToken = Consume(TokenType.Identifier, "Expected parameter name");
-                    parameters.Add(new(pNameToken.Value, pTypeToken.Value));
+                    parameters.Add(new(pNameToken.Value, pTypeToken.Value, new SourceSpan(pTypeToken.Position, pNameToken.Position)));
                 } while (Match(","));
 
                 // Your common recovery: "Expected ')', found '{'"

@@ -13,6 +13,7 @@ public sealed record BindContext
     public CallableSymbol? ContainingCallable { get; init; }
     public TypeSymbol? ExpectedType { get; init; }
     public bool IsLValueTarget { get; init; }
+    public required SlotAllocator SlotAllocator { get; init; }
     public BindContext PushScope() => this with { Scope = new Scope(Scope) };
     public BindContext WithExpectedType(TypeSymbol? expected) => this with { ExpectedType = expected };
     public BindContext WithLValueTarget(bool isTarget) => this with { IsLValueTarget = isTarget };

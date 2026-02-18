@@ -1,4 +1,6 @@
-﻿namespace VectraCompiler.Bind.Models.Symbols;
+﻿using VectraCompiler.Core;
+
+namespace VectraCompiler.Bind.Models.Symbols;
 
 public enum SymbolKind
 {
@@ -15,6 +17,8 @@ public abstract class Symbol
 {
     public SymbolKind Kind { get; }
     public string Name { get; }
+    public SourceSpan? DeclarationSpan { get; init; }
+    public string? SourceFilePath => DeclarationSpan?.FilePath;
     
     protected Symbol(SymbolKind kind, string name)
     {
