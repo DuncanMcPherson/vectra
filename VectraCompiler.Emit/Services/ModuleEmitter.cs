@@ -209,13 +209,7 @@ public sealed class ModuleEmitter
 
     private void WriteImportsTable(BinaryWriter writer)
     {
-        var importedModules = _pool.Entries
-            .Where(e => e.Kind == ConstantKind.Type)
-            .Select(e => e.Name)
-            .Where(name => _module.Types.All(t => t.FullName != name))
-            .Select(name => name.Split('.').First()) // module name is the first segment
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        var importedModules = _module.References;
 
         writer.Write((ushort)importedModules.Count);
         foreach (var import in importedModules)

@@ -8,6 +8,7 @@ public sealed class LoweredModule
 {
     public required string ModuleName { get; init; }
     public required string ModuleRoot { get; init; }
+    public required IReadOnlyList<string> References { get; init; }
     public required ModuleType ModuleType { get; init; }
     public required IReadOnlyList<NamedTypeSymbol> Types { get; init; }
     public required IReadOnlyDictionary<CallableSymbol, BoundStatement> LoweredBodies { get; init; }
