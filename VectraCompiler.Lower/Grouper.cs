@@ -75,6 +75,7 @@ public static class Grouper
             {
                 ModuleName = metadata.Name,
                 ModuleType = metadata.Type,
+                ModuleRoot = metadata.ModuleRoot,
                 Types = types ?? [],
                 LoweredBodies = bodies ?? []
             };

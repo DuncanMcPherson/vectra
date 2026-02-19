@@ -27,6 +27,7 @@
   <Project Path="VectraCompiler.Analysis/VectraCompiler.Analysis.csproj" />
   <Project Path="VectraCompiler.AST/VectraCompiler.AST.csproj" />
   <Project Path="VectraCompiler.Bind/VectraCompiler.Bind.csproj" />
+  <Project Path="VectraCompiler.Emit/VectraCompiler.Emit.csproj" />
   <Project Path="VectraCompiler.Lower/VectraCompiler.Lower.csproj" />
   <Project Path="VectraCompiler.Core/VectraCompiler.Core.csproj" />
   <Project Path="VectraCompiler.Package/VectraCompiler.Package.csproj" />

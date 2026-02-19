@@ -279,6 +279,13 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
         }
 
+        if (local is FieldSymbol or PropertySymbol)
+        {
+            ctx.Diagnostics.Error(ErrorCode.MemberRequiresThis,
+                $"Member '{node.Name}' must be accessed via 'this'. Use 'this.{node.Name}' instead.");
+            return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+        }
+
         return new BoundLocalExpression(node.Span, local);
     }
 
