@@ -268,6 +268,8 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         var candidates = ctx.Scope.Lookup(node.Name);
         if (candidates.Count == 0)
         {
+            if (NativeFunctionRegistry.TryGet(node.Name, out var nativeFunc))
+                return new BoundNativeFunctionExpression(node.Span, nativeFunc);
             ctx.Diagnostics.Error(ErrorCode.IdentifierNotFound, $"Unknown identifier '{node.Name}'.");
             return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
         }
@@ -313,6 +315,16 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
     {
         var args = node.Arguments.Select(a => BindExpression(a, ctx)).ToArray();
         var memberAccess = BindExpression(node.Target, ctx);
+        if (memberAccess is BoundNativeFunctionExpression nativeFunc)
+        {
+            if (args.Length != nativeFunc.Native.ParameterTypes.Count)
+            {
+                ctx.Diagnostics.Error(ErrorCode.ArgumentCountMismatch,
+                    $"Native function '{nativeFunc.Native.Name}' expects {nativeFunc.Native.ParameterTypes.Count} argument(s) but got {args.Length}.");
+                return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+            }
+            return new BoundNativeFunctionCallExpression(node.Span, nativeFunc.Native, args);
+        }
         if (memberAccess is not BoundMethodGroupExpression boundAccess)
         {
             ctx.Diagnostics.Error(ErrorCode.TargetNotCallable, $"Cannot call method on non-member access expression.");

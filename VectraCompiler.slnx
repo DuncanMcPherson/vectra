@@ -7,21 +7,12 @@
   <Folder Name="/TestCode/">
     <File Path="TestCode/TestProject.vpkg" />
   </Folder>
-  <Folder Name="/TestCode/Vectra.Test.Dependency/">
-    <File Path="TestCode/Vectra.Test.Dependency/Vectra.Test.Dependency.vmod" />
-  </Folder>
-  <Folder Name="/TestCode/Vectra.Test.Dependency/src/">
-    <File Path="TestCode\Vectra.Test.Dependency\src\TestRunner.vec" />
-  </Folder>
   <Folder Name="/TestCode/Vectra.Test/">
     <File Path="TestCode/Vectra.Test/Vectra.Test.vmod" />
   </Folder>
   <Folder Name="/TestCode/Vectra.Test/src/">
     <File Path="TestCode/Vectra.Test/src/TestSrc.vec" />
     <File Path="TestCode/Vectra.Test/src/TestSrc2.vec" />
-  </Folder>
-  <Folder Name="/TestCode/Vectra.Test/src/Games/">
-    <File Path="TestCode/Vectra.Test/src/Games/Fortnite.vec" />
   </Folder>
   <Project Path="VectraCompiler.Analysis.Tests/VectraCompiler.Analysis.Tests.csproj" />
   <Project Path="VectraCompiler.Analysis/VectraCompiler.Analysis.csproj" />

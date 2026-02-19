@@ -7,7 +7,3 @@ metadata {
 sources {
     src/**/*.vec
 }
-
-references {
-    Vectra.Test.Dependency
-}

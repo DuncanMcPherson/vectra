@@ -15,4 +15,6 @@ public enum BoundNodeKind
     NewExpression,
     ErrorExpression,
     MethodGroupExpression,
+    NativeFunctionExpression,
+    NativeFunctionCallExpression
 }
