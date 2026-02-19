@@ -39,6 +39,7 @@ public static class EmitPhaseRunner
                         var outputDir = GetOutputDir(module);
                         var emitter = new ModuleEmitter(module);
                         await emitter.EmitAsync(outputDir, ct);
+                        await CopyDependenciesAsync(module, outputDir, modules, ct);
 
                         Logger.LogInfo($"Emitted '{module.ModuleName}' to '{outputDir}'");
                         emittedPaths.Add(outputDir);
@@ -72,5 +73,27 @@ public static class EmitPhaseRunner
     private static string GetOutputDir(LoweredModule module)
     {
         return Path.Combine(module.ModuleRoot, "bin", "Debug");
+    }
+
+    private static async Task CopyDependenciesAsync(LoweredModule active, string outputDir, List<LoweredModule> all,
+        CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var dependencies = all.FindAll(x => active.References.Contains(x.ModuleName));
+        if (dependencies.Count == 0) return;
+        var dependencyVdlFiles = dependencies.Select(d => Path.Combine(GetOutputDir(d), $"{d.ModuleName}.vdl"));
+        var dependencyVdiFiles = dependencies.Select(d => Path.Combine(GetOutputDir(d), $"{d.ModuleName}.vdi"));
+        var dependencyVdsFiles = dependencies.Select(d => Path.Combine(GetOutputDir(d), $"{d.ModuleName}.vds"));
+        
+        var allFiles = dependencyVdlFiles.Concat(dependencyVdiFiles).Concat(dependencyVdsFiles);
+        foreach (var file in allFiles)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!File.Exists(file))
+            {
+                throw new Exception($"Dependency file '{file}' does not exist.");
+            }
+            await Task.Run(() => File.Copy(file, Path.Combine(outputDir, Path.GetFileName(file)), true), ct);
+        }
     }
 }
