@@ -3,7 +3,7 @@ space Vectra.Test.Games;
 class Fortnite {
 	string Name { get; set; }
 	Fortnite(string name) {
-		Name = name;
+		this.Name = name;
 	}
 
 	void Play(Player player) {
