@@ -5,6 +5,7 @@ using VectraCompiler.Lower;
 using VectraCompiler.AST;
 using VectraCompiler.Bind;
 using VectraCompiler.Core.Logging;
+using VectraCompiler.Emit;
 using VectraCompiler.Package;
 using Extensions = VectraCompiler.Core.Extensions;
 
@@ -41,7 +42,9 @@ internal sealed class BuildCommand : AsyncCommand<BuildSettings>
             return 1;
         var groupedModules = Grouper.Run(
             lowerResult.Value!, res.Value.Item1.Order, package);
-        return groupedModules.Ok ? 0 : 1;
+        if (!groupedModules.Ok) return 1;
+        var emitResult = await EmitPhaseRunner.RunAsync(groupedModules.Value!, cancellationToken);
+        return emitResult.Ok ? 0 : 1;
     }
 
 }
