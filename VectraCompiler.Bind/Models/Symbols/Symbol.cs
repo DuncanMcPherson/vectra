@@ -10,7 +10,8 @@ public enum SymbolKind
     Local,
     Constructor,
     Property,
-    Field
+    Field,
+    NativeFunction
 }
 
 public abstract class Symbol

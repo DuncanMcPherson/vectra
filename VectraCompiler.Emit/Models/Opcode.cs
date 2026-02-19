@@ -21,6 +21,7 @@ public enum Opcode : byte
     CALL = 0X40,
     CALL_CTOR = 0X41,
     RET = 0X42,
+    CALL_NATIVE = 0X43,
     
     ADD = 0X50,
     SUB = 0X51,

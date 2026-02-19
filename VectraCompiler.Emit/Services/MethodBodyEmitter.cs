@@ -108,6 +108,9 @@ public sealed class MethodBodyEmitter
             case BoundMemberAccessExpressionReceiver member:
                 EmitMemberAccess(member);
                 break;
+            case BoundNativeFunctionCallExpression nativeCall:
+                EmitNativeCall(nativeCall);
+                break;
             default:
                 throw new InvalidOperationException(
                     $"Unsupported expression kind in emit: {node.GetType().Name}");
@@ -215,5 +218,14 @@ public sealed class MethodBodyEmitter
             ? _pool.AddField(f)
             : _pool.AddProperty((PropertySymbol)node.Member);
         _buffer.Emit(Opcode.LOAD_MEMBER, memberIndex);
+    }
+
+    private void EmitNativeCall(BoundNativeFunctionCallExpression node)
+    {
+        foreach (var arg in node.Arguments)
+            EmitExpression(arg);
+        _buffer.Emit(Opcode.CALL_NATIVE,
+            (ushort)node.NativeFunction.NativeIndex,
+            (ushort)node.Arguments.Length);
     }
 }

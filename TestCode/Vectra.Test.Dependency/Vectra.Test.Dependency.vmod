@@ -1,9 +1,0 @@
-module Vectra.Test.Dependency
-
-metadata {
-    type library
-}
-
-sources {
-    src/**/*.vec
-}
