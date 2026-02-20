@@ -6,6 +6,7 @@ public enum BoundBinaryOperatorKind
     Subtract,
     Multiply,
     Divide,
+    Modulo,
     Equals,
     NotEquals,
     Less,
