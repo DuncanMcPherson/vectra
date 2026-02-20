@@ -17,5 +17,6 @@ public enum BoundNodeKind
     MethodGroupExpression,
     NativeFunctionExpression,
     NativeFunctionCallExpression,
-    ObjectAllocationStatement
+    ObjectAllocationStatement,
+    UnaryExpression
 }
