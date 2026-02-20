@@ -224,7 +224,7 @@ public static class BindPhaseRunner
         var returnType = ResolveType(scope, method.ReturnType, db);
         Logger.LogTrace($"Return type of function '{funcName}' is '{returnType.Name}'");
         var parameters = BindParameters(scope, typeSym, filePath, method.Parameters, db);
-        var funcSym = new MethodSymbol(funcName, returnType, parameters)
+        var funcSym = new MethodSymbol(funcName, returnType, parameters, typeSym)
         {
             DeclarationSpan = method.Span with { FilePath = filePath }
         };
