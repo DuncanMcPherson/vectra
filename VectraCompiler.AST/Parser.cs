@@ -519,7 +519,7 @@ public sealed class Parser(List<Token> tokens, string file)
 
     private IExpressionNode ParseBinary()
     {
-        var left = ParsePrimary();
+        var left = ParseUnary();
 
         while (IsBinaryOperator(Peek().Value))
         {
@@ -530,6 +530,14 @@ public sealed class Parser(List<Token> tokens, string file)
         }
 
         return left;
+    }
+
+    private IExpressionNode ParseUnary()
+    {
+        if (Peek().Value is not ("!" or "-")) return ParsePrimary();
+        var opToken = Advance();
+        var operand = ParseUnary();
+        return new UnaryExpressionNode(opToken.Value, operand, operand.Span);
     }
 
     private IExpressionNode ParsePrimary()

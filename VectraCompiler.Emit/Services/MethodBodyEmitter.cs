@@ -116,6 +116,9 @@ public sealed class MethodBodyEmitter
             case BoundNativeFunctionCallExpression nativeCall:
                 EmitNativeCall(nativeCall);
                 break;
+            case BoundUnaryExpression un:
+                EmitUnary(un);
+                break;
             default:
                 throw new InvalidOperationException(
                     $"Unsupported expression kind in emit: {node.GetType().Name}");
@@ -239,5 +242,16 @@ public sealed class MethodBodyEmitter
         _buffer.Emit(Opcode.CALL_NATIVE,
             (ushort)node.NativeFunction.NativeIndex,
             (ushort)node.Arguments.Length);
+    }
+
+    private void EmitUnary(BoundUnaryExpression node)
+    {
+        EmitExpression(node.Operand);
+        _buffer.Emit(node.Operator.Kind switch
+        {
+            BoundUnaryOperatorKind.Negate => Opcode.NEG,
+            BoundUnaryOperatorKind.LogicalNot => Opcode.NOT,
+            _ => throw new InvalidOperationException($"Unsupported unary operator: {node.Operator.Kind}")
+        });
     }
 }

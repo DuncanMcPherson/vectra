@@ -25,6 +25,7 @@ public interface IAstVisitor<out T>
     T VisitNewExpression(NewExpressionNode node);
     T VisitMemberAccessExpression(MemberAccessExpressionNode node);
     T VisitAssignmentExpression(AssignmentExpressionNode node);
+    T VisitUnaryExpression(UnaryExpressionNode node);
     
     #endregion
 
