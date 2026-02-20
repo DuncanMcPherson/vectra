@@ -1,4 +1,5 @@
-﻿using VectraCompiler.Bind.Bodies;
+﻿using VectraCompiler.AST.Models.Declarations;
+using VectraCompiler.Bind.Bodies;
 using VectraCompiler.Bind.Bodies.Expressions;
 using VectraCompiler.Bind.Bodies.Statements;
 using VectraCompiler.Bind.Models;
@@ -10,14 +11,16 @@ namespace VectraCompiler.Lower.Transformers;
 public abstract class BoundTreeRewriter
 {
     private readonly DiagnosticBag _diag;
+    private readonly DeclarationBindResult _declarations;
 
     private SlotAllocator? _allocator;
 
     private readonly List<BoundStatement> _pendingStatements = new();
 
-    protected BoundTreeRewriter(DiagnosticBag diag)
+    protected BoundTreeRewriter(DiagnosticBag diag, DeclarationBindResult declarations)
     {
         _diag = diag;
+        _declarations = declarations;
     }
 
     protected void EmitPending(BoundStatement statement) => _pendingStatements.Add(statement);
@@ -206,11 +209,37 @@ public abstract class BoundTreeRewriter
 
         EmitPending(new BoundVariableDeclarationStatement(node.Span, tempLocal, null));
         EmitPending(new BoundObjectAllocationStatement(node.Span, tempLocal, (NamedTypeSymbol)node.Type));
+        EmitMemberInitializers(node, tempLocal);
         var thisArg = new BoundLocalExpression(node.Span, tempLocal);
         var ctorArgs = finalArgs.Prepend(thisArg).ToArray();
         EmitPending(new BoundExpressionStatement(node.Span,
             new BoundCallExpression(node.Span, node.Constructor, null, ctorArgs)));
         return new BoundLocalExpression(node.Span, tempLocal);
+    }
+
+    public virtual void EmitMemberInitializers(BoundNewExpression node, LocalSymbol tempLocal)
+    {
+        var containingType = node.Constructor.ContainingType;
+        if (!_declarations.TypeMemberScopes.TryGetValue(containingType, out var memberScope))
+            return;
+        var members = memberScope.AllSymbols()
+            .OfType<VariableSymbol>()
+            .Where(s => s is FieldSymbol);
+
+        foreach (var memberSym in members)
+        {
+            var initExpr = memberSym switch
+            {
+                FieldSymbol f => f.Initializer,
+                _ => null
+            };
+
+            if (initExpr == null) continue;
+            
+            var thisExpr = new BoundLocalExpression(node.Span, tempLocal);
+            var memberAccess = new BoundMemberAccessExpressionReceiver(node.Span, thisExpr, memberSym);
+            EmitPending(new BoundExpressionStatement(node.Span, new BoundAssignmentExpression(node.Span, memberAccess, RewriteExpression(initExpr))));
+        }
     }
 
     public virtual BoundExpression RewriteMemberAccessExpression(BoundMemberAccessExpressionReceiver node)

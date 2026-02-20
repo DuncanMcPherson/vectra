@@ -89,7 +89,7 @@ public static class BindPhaseRunner
                 {
                     if (typeNode is not ClassDeclarationNode cdn)
                         continue;
-                    foreach (var memberNode in cdn.Members.OfType<CallableMember>())
+                    foreach (var memberNode in cdn.Members)
                     {
                         if (!declarations.SymbolsByNode.TryGetValue(memberNode, out var sym))
                             continue;
@@ -104,6 +104,10 @@ public static class BindPhaseRunner
                                 Logger.LogTrace($"Binding constructor body for {typeSymbol.Name}");
                                 bodies[sym] = binder.BindConstructorBody(c, typeSymbol, cn.Body, out var alloc);
                                 allocators[sym] = alloc;
+                                break;
+                            case FieldSymbol f when memberNode is FieldDeclarationNode fdn:
+                                Logger.LogTrace($"Binding field initializer for {f.Name} in type {typeSymbol.Name}");
+                                f.Initializer = binder.BindFieldInitializer(f, typeSymbol, fdn.Initializer);
                                 break;
                         }
                     }
@@ -165,7 +169,7 @@ public static class BindPhaseRunner
                 case PropertyDeclarationNode pdn:
                     Logger.LogTrace($"Binding property '{pdn.Name}' in type '{typeSym.Name}'");
                     var propType = ResolveType(memberScope, pdn.Type, db);
-                    var propSym = new PropertySymbol(pdn.Name, propType, pdn.HasGetter, pdn.HasSetter)
+                    var propSym = new PropertySymbol(pdn.Name, propType, typeSym, pdn.HasGetter, pdn.HasSetter)
                     {
                         DeclarationSpan = pdn.Span with { FilePath = filePath }
                     };
@@ -177,7 +181,7 @@ public static class BindPhaseRunner
                 case FieldDeclarationNode fdn:
                     Logger.LogTrace($"Binding field '{fdn.Name}' in type '{typeSym.Name}'");
                     var fieldType = ResolveType(memberScope, fdn.Type, db);
-                    var fieldSym = new FieldSymbol(fdn.Name, fieldType)
+                    var fieldSym = new FieldSymbol(fdn.Name, fieldType, typeSym)
                     {
                         DeclarationSpan = fdn.Span with { FilePath = filePath }
                     };

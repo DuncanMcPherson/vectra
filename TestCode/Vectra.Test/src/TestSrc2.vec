@@ -2,14 +2,18 @@ space Vectra.Test;
 
 class Player {
     number Age { get; set; }
+    string Name { get; set; }
     number Wins = 0;
     number Losses = 0;
-    Player(number age) {
-        PrintLine("Player created");
+    Player(number age, string name) {
         this.Age = age;
+        this.Name = name;
+        PrintLine("Welcome to the game " + this.Name + "!");
+        PrintLine("Your age is " + this.Age);
     }
     
     void Win() {
+        PrintLine("Player wins");
         this.Wins = this.Wins + 1;
     }
     

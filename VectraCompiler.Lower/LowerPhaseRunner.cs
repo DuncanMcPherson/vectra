@@ -2,6 +2,7 @@
 using VectraCompiler.Analysis.Models;
 using VectraCompiler.Bind.Models.Symbols;
 using VectraCompiler.Bind.Bodies.Statements;
+using VectraCompiler.Bind.Models;
 using VectraCompiler.Core;
 using VectraCompiler.Core.ConsoleExtensions;
 using VectraCompiler.Core.Errors;
@@ -13,7 +14,7 @@ namespace VectraCompiler.Lower;
 
 public static class LowerPhaseRunner
 {
-    private sealed class DefaultLowerer(DiagnosticBag diag) : BoundTreeRewriter(diag)
+    private sealed class DefaultLowerer(DiagnosticBag diag, DeclarationBindResult bind) : BoundTreeRewriter(diag, bind)
     {
         // Currently just a pass-through, can be extended for specific lowering rules
     }
@@ -38,7 +39,7 @@ public static class LowerPhaseRunner
                 var task = ctx.AddTask("Lowering method bodies", maxValue: bodies.Count);
                 
                 var loweredBodies = new Dictionary<CallableSymbol, BoundStatement>();
-                var lowerer = new DefaultLowerer(db);
+                var lowerer = new DefaultLowerer(db, analyzeResult.BindResult.Declarations);
 
                 foreach (var (symbol, body) in bodies)
                 {

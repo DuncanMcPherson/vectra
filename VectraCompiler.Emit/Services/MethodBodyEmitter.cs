@@ -126,10 +126,18 @@ public sealed class MethodBodyEmitter
     {
         switch (node.Value)
         {
+            case int i:
+            {
+                var numIndex = _pool.AddNumber(i);
+                _buffer.Emit(Opcode.LOAD_CONST, numIndex);
+                break;
+            }
             case double d:
+            {
                 var numIndex = _pool.AddNumber(d);
                 _buffer.Emit(Opcode.LOAD_CONST, numIndex);
                 break;
+            }
             case string s:
                 var strIndex = _pool.AddString(s);
                 _buffer.Emit(Opcode.LOAD_CONST, strIndex);

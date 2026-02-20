@@ -44,7 +44,9 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
 
         // string/number or number/string (for string interpolation)
         new (BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String),
-        new (BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String)
+        new (BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String),
+        new(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Bool, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String),
+        new(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Bool, BuiltInTypeSymbol.String),
     ];
 
     public BoundBlockStatement BindConstructorBody(
@@ -78,6 +80,28 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             SlotAllocator = allocator
         };
         return BindBlock(body, ctx);
+    }
+
+    public BoundExpression? BindFieldInitializer(
+        FieldSymbol field,
+        NamedTypeSymbol containingType,
+        IExpressionNode? initializer)
+    {
+        if (initializer == null)
+            return null;
+        var localScope = declarations.TypeMemberScopes[containingType];
+        var allocator = new SlotAllocator();
+        var ctx = new BindContext
+        {
+            Declarations = declarations,
+            Diagnostics = diagnostics,
+            Scope = localScope,
+            ContainingType = containingType,
+            ExpectedType = field.Type,
+            IsLValueTarget = true,
+            SlotAllocator = allocator
+        };
+        return BindExpression(initializer, ctx);
     }
 
     public BoundBlockStatement BindMethodBody(
