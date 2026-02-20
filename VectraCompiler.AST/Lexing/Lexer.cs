@@ -33,7 +33,17 @@ public class Lexer
         "set",
         "new",
         "true",
-        "false"
+        "false",
+        "if",
+        "else",
+        "while",
+        "for", // Consider adding "in" and "foreach"
+        "break",
+        "continue",
+        "try",
+        "catch",
+        "finally",
+        "throw"
     ];
 
     /// <summary>
