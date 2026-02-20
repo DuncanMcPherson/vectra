@@ -2,13 +2,17 @@ space Vectra.Test;
 
 class Program {
     void Main() {
-        PrintLine("Hello Vectra!");
+        Print("What is your name? ");
+        let name = ReadLine();
+        PrintLine("Hello " + name + "!");
         Print("How old are you? ");
         number age = ReadInt();
-        let player = new Player(age);
+        let player = new Player(age, name);
         PrintLine("Creating observer...");
         let observer = new Observer();
         PrintLine("Observer created.");
         observer.Observe(player);
+        player.Win();
+        player.Win();
     }
 }

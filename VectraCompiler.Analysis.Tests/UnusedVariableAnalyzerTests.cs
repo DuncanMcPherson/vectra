@@ -60,7 +60,7 @@ public class UnusedVariableAnalyzerTests : AnalyzerTestBase
     public void FieldRead_NoWarning()
     {
         var method = MakeMethod("DoThing", BuiltInTypeSymbol.Void);
-        var field = new FieldSymbol("Score", BuiltInTypeSymbol.Number);
+        var field = new FieldSymbol("Score", BuiltInTypeSymbol.Number, TestType);
         var body = Block(ExprStmt(ReadLocal(field)));
         var db = new DiagnosticBag();
 

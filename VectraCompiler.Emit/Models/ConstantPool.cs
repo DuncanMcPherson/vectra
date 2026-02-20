@@ -24,12 +24,12 @@ public sealed class ConstantPool
             ConstantEntry.ForSymbol((ushort)_entries.Count, ConstantKind.Method, MethodKey(method)));
 
     public ushort AddField(FieldSymbol field)
-        => GetOrAdd(_symbolIndex, MemberKey(field), () =>
-            ConstantEntry.ForSymbol((ushort)_entries.Count, ConstantKind.Field, MemberKey(field)));
+        => GetOrAdd(_symbolIndex, FieldKey(field), () =>
+            ConstantEntry.ForSymbol((ushort)_entries.Count, ConstantKind.Field, FieldKey(field)));
 
     public ushort AddProperty(PropertySymbol property)
-        => GetOrAdd(_symbolIndex, MemberKey(property), () =>
-            ConstantEntry.ForSymbol((ushort)_entries.Count, ConstantKind.Property, MemberKey(property)));
+        => GetOrAdd(_symbolIndex, PropertyKey(property), () =>
+            ConstantEntry.ForSymbol((ushort)_entries.Count, ConstantKind.Property, PropertyKey(property)));
 
     public ushort AddString(string value)
         => GetOrAdd(_stringIndex, value, () =>
@@ -63,6 +63,6 @@ public sealed class ConstantPool
     private static string MethodKey(MethodSymbol method)
         => $"{method.ContainingType.FullName}::{method.Name}({string.Join(",", method.Parameters.Skip(1).Select(p => p.Type.Name))})";
 
-    private static string MemberKey(Symbol member)
-        => $"{member.SourceFilePath}::{member.Name}";
+    private static string FieldKey(FieldSymbol field) => $"{field.ContainingType.FullName}::{field.Name}";
+    private static string PropertyKey(PropertySymbol property) => $"{property.ContainingType.FullName}::{property.Name}";
 }
