@@ -161,7 +161,7 @@ public sealed class MethodBodyEmitter
             BoundBinaryOperatorKind.Subtract      => Opcode.SUB,
             BoundBinaryOperatorKind.Multiply      => Opcode.MUL,
             BoundBinaryOperatorKind.Divide        => Opcode.DIV,
-            // BoundBinaryOperatorKind.Modulo        => Opcode.MOD,
+            BoundBinaryOperatorKind.Modulo        => Opcode.MOD,
             BoundBinaryOperatorKind.Equals        => Opcode.CEQ,
             BoundBinaryOperatorKind.NotEquals     => Opcode.CNE,
             BoundBinaryOperatorKind.Less          => Opcode.CLT,

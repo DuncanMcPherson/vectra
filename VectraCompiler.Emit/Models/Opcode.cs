@@ -29,6 +29,7 @@ public enum Opcode : byte
     DIV = 0X53,
     MOD = 0X54,
     NEG = 0X55,
+    NOT = 0X56,
     
     CEQ = 0X60,
     CNE = 0X61,

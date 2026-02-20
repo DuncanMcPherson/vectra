@@ -19,6 +19,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         new(BoundBinaryOperatorKind.Subtract, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
         new(BoundBinaryOperatorKind.Multiply, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
         new(BoundBinaryOperatorKind.Divide, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
+        new(BoundBinaryOperatorKind.Modulo, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
 
         new(BoundBinaryOperatorKind.Equals, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Bool),
         new(BoundBinaryOperatorKind.NotEquals, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Bool),
