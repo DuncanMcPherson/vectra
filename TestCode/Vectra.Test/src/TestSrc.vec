@@ -6,7 +6,9 @@ class Program {
         Print("How old are you? ");
         number age = ReadInt();
         let player = new Player(age);
+        PrintLine("Creating observer...");
         let observer = new Observer();
+        PrintLine("Observer created.");
         observer.Observe(player);
     }
 }

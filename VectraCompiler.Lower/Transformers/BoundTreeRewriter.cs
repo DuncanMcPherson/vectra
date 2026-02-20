@@ -205,6 +205,7 @@ public abstract class BoundTreeRewriter
         };
 
         EmitPending(new BoundVariableDeclarationStatement(node.Span, tempLocal, null));
+        EmitPending(new BoundObjectAllocationStatement(node.Span, tempLocal, (NamedTypeSymbol)node.Type));
         var thisArg = new BoundLocalExpression(node.Span, tempLocal);
         var ctorArgs = finalArgs.Prepend(thisArg).ToArray();
         EmitPending(new BoundExpressionStatement(node.Span,

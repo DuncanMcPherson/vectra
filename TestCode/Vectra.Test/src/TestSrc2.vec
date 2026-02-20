@@ -5,6 +5,7 @@ class Player {
     number Wins = 0;
     number Losses = 0;
     Player(number age) {
+        PrintLine("Player created");
         this.Age = age;
     }
     
@@ -24,5 +25,6 @@ class Player {
 
 class Observer {
     void Observe(Player player) {
+        PrintLine("Observing player");
     }
 }
