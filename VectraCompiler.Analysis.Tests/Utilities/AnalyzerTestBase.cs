@@ -16,7 +16,7 @@ public abstract class AnalyzerTestBase
         var all = new[] { thisParam }
             .Concat(extraParams)
             .ToArray();
-        return new MethodSymbol(name, returnType, all);
+        return new MethodSymbol(name, returnType, all, TestType);
     }
 
     protected static ConstructorSymbol MakeConstructor(params ParameterSymbol[] extraParams)

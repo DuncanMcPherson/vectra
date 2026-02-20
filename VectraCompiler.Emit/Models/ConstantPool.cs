@@ -58,10 +58,10 @@ public sealed class ConstantPool
     }
 
     private static string CtorKey(ConstructorSymbol ctor)
-        => $"{ctor.SourceFilePath}::.ctor({string.Join(",", ctor.Parameters.Skip(1).Select(p => p.Type.Name))})";
+        => $"{ctor.ContainingType.FullName}::.ctor({string.Join(",", ctor.Parameters.Skip(1).Select(p => p.Type.Name))})";
 
     private static string MethodKey(MethodSymbol method)
-        => $"{method.SourceFilePath}::{method.Name}({string.Join(",", method.Parameters.Skip(1).Select(p => p.Type.Name))})";
+        => $"{method.ContainingType.FullName}::{method.Name}({string.Join(",", method.Parameters.Skip(1).Select(p => p.Type.Name))})";
 
     private static string MemberKey(Symbol member)
         => $"{member.SourceFilePath}::{member.Name}";

@@ -244,7 +244,7 @@ public sealed class ModuleEmitter
 
             var fields = _module.LoweredBodies.Keys
                 .OfType<MethodSymbol>()
-                .Where(m => m.SourceFilePath == type.SourceFilePath)
+                .Where(m => m.ContainingType == type)
                 .ToList();
 
             // Write method count and their pool indices

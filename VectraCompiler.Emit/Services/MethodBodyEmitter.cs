@@ -51,6 +51,11 @@ public sealed class MethodBodyEmitter
             case BoundReturnStatement ret:
                 EmitReturn(ret);
                 break;
+            case BoundObjectAllocationStatement objAlloc:
+                var typeIndex = _pool.AddType(objAlloc.Type);
+                _buffer.Emit(Opcode.NEW_OBJ, typeIndex);
+                _buffer.Emit(Opcode.STORE_LOCAL, (ushort)objAlloc.Target.SlotIndex);
+                break;
             default:
                 throw new InvalidOperationException(
                     $"Unsupported statement kind in emit: {node.GetType().Name}");
@@ -181,7 +186,6 @@ public sealed class MethodBodyEmitter
                 var memberIndex = member.Member is FieldSymbol f
                     ? _pool.AddField(f)
                     : _pool.AddProperty((PropertySymbol)member.Member);
-                _buffer.Emit(Opcode.DUP);
                 _buffer.Emit(Opcode.STORE_MEMBER, memberIndex);
                 break;
             default:
