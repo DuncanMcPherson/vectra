@@ -14,10 +14,6 @@ public class MemberAccessExpressionNode : AstNodeBase, IExpressionNode
         TargetName = targetName;
         Span = span;
     }
-    public override T Visit<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitMemberAccessExpression(this);
-    }
 
     public override string ToPrintable()
     {

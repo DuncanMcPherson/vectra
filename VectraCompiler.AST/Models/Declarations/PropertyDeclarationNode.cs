@@ -6,10 +6,6 @@ namespace VectraCompiler.AST.Models.Declarations;
 public class PropertyDeclarationNode(string name, string type, SourceSpan span, bool hasGetter, bool hasSetter) : AstNodeBase, IMemberNode
 {
     public override SourceSpan Span { get; } = span;
-    public override T Visit<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitPropertyDeclaration(this);
-    }
 
     public string Name { get; } = name;
     public bool HasGetter { get; } = hasGetter;

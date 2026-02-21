@@ -15,10 +15,6 @@ public class AssignmentExpressionNode : AstNodeBase, IExpressionNode
     }
 
     public override SourceSpan Span { get; }
-    public override T Visit<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitAssignmentExpression(this);
-    }
 
     public override string ToPrintable()
     {

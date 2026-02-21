@@ -12,9 +12,4 @@ public class UnaryExpressionNode(string op, IExpressionNode operand, SourceSpan 
     {
         return $"{Operator}{Operand}";
     }
-
-    public T Visit<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitUnaryExpression(this);
-    }
 }

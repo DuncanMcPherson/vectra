@@ -10,11 +10,6 @@ public class ConstructorDeclarationNode (string name, IList<VParameter> paramete
     public override IList<VParameter> Parameters { get; } = parameters;
     public override BlockStatementNode Body { get; } = body;
     public override SourceSpan Span { get; } = span;
-    public override T Visit<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitConstructorDeclaration(this);
-    }
-
     public override string ToPrintable()
     {
         return $"{Name}({string.Join(", ", Parameters)}) {{\n\t{string.Join("\n\t", Body)}\n}}";

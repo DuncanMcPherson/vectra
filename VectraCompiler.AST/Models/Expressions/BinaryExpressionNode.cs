@@ -9,7 +9,6 @@ public class BinaryExpressionNode(string op, IExpressionNode left, IExpressionNo
     public IExpressionNode Right { get; } = right;
     public override SourceSpan Span { get; } = span;
     
-    public override T Visit<T>(IAstVisitor<T> visitor) => visitor.VisitBinaryExpression(this);
     public override string ToPrintable()
     {
         return $"{Left} {Operator} {Right}";
