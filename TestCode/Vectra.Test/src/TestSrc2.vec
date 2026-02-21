@@ -23,7 +23,8 @@ class Player {
     
     number GetVictoryPercentage() {
         let totalMatches = this.Wins + this.Losses;
-        return this.Wins / totalMatches;
+        let of1 = this.Wins / totalMatches;
+        return of1 * 100;
     }
 }
 

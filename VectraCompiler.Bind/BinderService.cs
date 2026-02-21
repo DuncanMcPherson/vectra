@@ -272,6 +272,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             LiteralExpressionNode n => BindLiteral(n, ctx),
             MemberAccessExpressionNode n => BindMemberAccess(n, ctx),
             NewExpressionNode n => BindNewExpression(n, ctx),
+            UnaryExpressionNode n => BindUnary(n, ctx),
             _ => BindBadExpression(node, ctx)
         };
     }
@@ -514,6 +515,18 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         ctx.Diagnostics.Error(ErrorCode.InvalidOperator, $"Operator '{opToken}' is not defined for '{left.Name}' and '{right.Name}'.");
         
         return null;
+    }
+
+    private BoundExpression BindUnary(UnaryExpressionNode node, BindContext ctx)
+    {
+        var operand = BindExpression(node.Operand, ctx);
+        var op = BoundUnaryOperator.Bind(node.Operator, operand.Type);
+        if (op is null)
+        {
+            ctx.Diagnostics.Error(ErrorCode.TypeMismatch, $"Operator '{node.Operator}' cannot be applied to operand of type '{operand.Type.Name}'.");
+            return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+        }
+        return new BoundUnaryExpression(node.Span, op, operand);
     }
 
     private static BoundBinaryOperatorKind? ResolveOperatorKind(string token)

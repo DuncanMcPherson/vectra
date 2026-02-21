@@ -115,6 +115,7 @@ public abstract class BoundTreeRewriter
             BoundMemberAccessExpressionReceiver member => RewriteMemberAccessExpression(member),
             BoundNewExpression @new => RewriteNewExpression(@new),
             BoundMethodGroupExpression mg => (BoundExpression)WriteErrorNode(mg),
+            BoundUnaryExpression un => RewriteUnaryExpression(un),
             _ => node
         };
     }
@@ -249,5 +250,11 @@ public abstract class BoundTreeRewriter
             return node;
 
         return new BoundMemberAccessExpressionReceiver(node.Span, expression, node.Member);
+    }
+
+    public virtual BoundExpression RewriteUnaryExpression(BoundUnaryExpression node)
+    {
+        var operand = RewriteExpression(node.Operand);
+        return operand == node.Operand ? node : new BoundUnaryExpression(node.Span, node.Operator, operand);
     }
 }

@@ -104,7 +104,7 @@ public class Lexer
 
         if (char.IsLetter(c) || c == '_')
             return ReadIdentOrKeyword(start, line, column);
-        if (char.IsDigit(c) || (c == '-' && char.IsDigit(PeekNext())))
+        if (char.IsDigit(c))
             return ReadNumber(start, line, column);
         return c == '"' ? ReadString(line, column) : ReadSymbolOrOperator(c, line, column);
     }
