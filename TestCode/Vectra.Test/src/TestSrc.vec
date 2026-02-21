@@ -12,7 +12,13 @@ class Program {
         let observer = new Observer();
         PrintLine("Observer created.");
         observer.Observe(player);
+        let percent = player.GetVictoryPercentage();
+        PrintLine(player.Name + " has won " + percent + "% of the time");
         player.Win();
-        player.Win();
+        percent = player.GetVictoryPercentage();
+        PrintLine(player.Name + " has won " + percent + "% of the time");
+        player.Lose();
+        percent = player.GetVictoryPercentage();
+        PrintLine(player.Name + " has won " + percent + "% of the time");
     }
 }

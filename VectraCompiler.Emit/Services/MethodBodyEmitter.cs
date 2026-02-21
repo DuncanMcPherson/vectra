@@ -190,7 +190,7 @@ public sealed class MethodBodyEmitter
                 else if (local.Local is LocalSymbol l)
                     index = l.SlotIndex;
                 else throw new InvalidOperationException("Invalid local expression.");
-                _buffer.Emit(Opcode.LOAD_LOCAL, (ushort)index);
+                _buffer.Emit(Opcode.STORE_LOCAL, (ushort)index);
                 break;
             case BoundMemberAccessExpressionReceiver member:
                 EmitExpression(member.Receiver);
