@@ -12,6 +12,6 @@ public sealed class ThrowStatementNode(
 
     public string ToPrintable()
     {
-        return $"throw {Expression};";
+        return $"abort {Expression};";
     }
 }

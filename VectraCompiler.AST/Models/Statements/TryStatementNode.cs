@@ -16,7 +16,7 @@ public sealed class TryStatementNode(
     public string ToPrintable()
     {
         return
-            $"try {{\n{TryBlock}\n}}{(CatchClause == null ? "" : $"\n{CatchClause}")}{(FinallyBlock == null ? "" : $"\nfinally {{\n{FinallyBlock}\n}}")}";
+            $"attempt {{\n{TryBlock}\n}}{(CatchClause == null ? "" : $"\n{CatchClause}")}{(FinallyBlock == null ? "" : $"\ndebrief {{\n{FinallyBlock}\n}}")}";
     }
 }
 
@@ -33,6 +33,6 @@ public sealed class CatchClauseNode(
 
     public override string ToString()
     {
-        return $"catch {(ExceptionName == null ? "" : $"({ExceptionType} {ExceptionName}) ")}{{\n{Body}\n}}";
+        return $"recover {(ExceptionName == null ? "" : $"({ExceptionType} {ExceptionName}) ")}{{\n{Body}\n}}";
     }
 }

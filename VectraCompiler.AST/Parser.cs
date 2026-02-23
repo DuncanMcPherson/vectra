@@ -1,5 +1,4 @@
 using VectraCompiler.AST.Lexing.Models;
-using VectraCompiler.AST.Models;
 using VectraCompiler.AST.Models.Declarations;
 using VectraCompiler.AST.Models.Declarations.Interfaces;
 using VectraCompiler.AST.Models.Expressions;
@@ -415,9 +414,132 @@ public sealed class Parser(List<Token> tokens, string file)
             return ParseReturnStatement();
         if (Check("let"))
             return ParseVariableDeclarationStatement(false);
+        if (Check("if"))      return ParseIfStatement();
+        if (Check("while"))   return ParseWhileStatement();
+        if (Check("for"))     return ParseForStatement();
+        if (Check("attempt"))     return ParseTryStatement();
+        if (Match("abort"))   return ParseThrowStatement();
         if (Check(TokenType.Identifier, TokenType.Keyword) && PeekNext()!.Type == TokenType.Identifier)
             return ParseVariableDeclarationStatement(true);
         return ParseExpressionStatement();
+    }
+
+    private IfStatementNode ParseIfStatement()
+    {
+        var start = Advance(); // keyword 'if'
+        Expect("(", "Expected '(' after 'if'");
+        var condition = ParseExpression();
+        Expect(")", "Expected ')' after if condition");
+        var then = ParseBlockOrStatement();
+        IStatementNode? elseClause = null;
+        if (Check("else"))
+        {
+            Advance();
+            elseClause = ParseBlockOrStatement();
+        }
+        return new IfStatementNode(condition, then, elseClause, new SourceSpan(start.Position, PreviousOrPeek().Position));
+    }
+
+    private WhileStatementNode ParseWhileStatement()
+    {
+        var start = Advance(); // keyword 'while'
+        Expect("(", "Expected '(' after 'while'");
+        var condition = ParseExpression();
+        Expect(")", "Expected ')' after while condition");
+        var body = ParseBlockOrStatement();
+        return new WhileStatementNode(condition, body, new SourceSpan(start.Position, PreviousOrPeek().Position));
+    }
+
+    private ForStatementNode ParseForStatement()
+    {
+        var start = Advance(); // keyword 'for'
+        Expect("(", "Expected '(' after 'for'");
+        IStatementNode? init = null;
+        if (!Check(";"))
+        {
+            if (Check("let") || (Check(TokenType.Identifier, TokenType.Keyword) &&
+                                 PeekNext()!.Type == TokenType.Identifier))
+            {
+                init = ParseVariableDeclarationStatement(Check(TokenType.Keyword) && Peek().Value != "let");
+            } else
+                init = ParseExpressionStatement();
+        }
+        else Expect(";", "Expected ';'");
+        var condition = Check(";") ? null : ParseExpression();
+        Expect(";", "Expected ';' after for condition");
+        var increment = Check(")") ? null : ParseExpression();
+        Expect(")", "Expected ')' after for clauses");
+        var body = ParseBlockOrStatement();
+        return new ForStatementNode(init, condition, increment, body, new SourceSpan(start.Position, PreviousOrPeek().Position));
+    }
+
+    private TryStatementNode ParseTryStatement()
+    {
+        var start = Advance(); // keyword 'try'
+        var tryBlock = ParseBlock();
+        CatchClauseNode? catchClause = null;
+        if (Check("recover"))
+        {
+            var catchStart = Advance(); // keyword 'catch'
+            string? exType = null, exName = null;
+
+            if (Match("("))
+            {
+                exType = ConsumeTypeToken("Expected exception type").Value;
+                if (Check(TokenType.Identifier)) exName = Advance().Value;
+                Expect(")", "Expected ')' after exception type");
+            }
+
+            var catchBody = ParseBlock();
+            catchClause = new CatchClauseNode(exType, exName, catchBody, new SourceSpan(catchStart.Position, PreviousOrPeek().Position));
+        }
+
+        BlockStatementNode? finallyBlock = null;
+        if (Check("debrief"))
+        {
+            Advance();
+            finallyBlock = ParseBlock();
+        }
+        
+        if (catchClause is null && finallyBlock is null)
+            Report(ErrorCode.ExpectedTokenMissing, "Expected 'recover' or 'debrief' after 'try'", Peek());
+        
+        return new TryStatementNode(tryBlock, catchClause, finallyBlock, new SourceSpan(start.Position, PreviousOrPeek().Position));
+    }
+
+    private ThrowStatementNode ParseThrowStatement()
+    {
+        var start = Previous();
+        var expr = ParseExpression();
+        Expect(";", "Expected ';' after abort expression");
+        return new ThrowStatementNode(expr, new SourceSpan(start.Position, PreviousOrPeek().Position));
+    }
+
+    private IStatementNode ParseBlockOrStatement()
+    {
+        if (Check("{")) return ParseBlock();
+        return ParseStatement();
+    }
+
+    private BlockStatementNode ParseBlock()
+    {
+        var open = Consume("{", "Expected '{' to start block");
+        var stmts = new List<IStatementNode>();
+        while (!IsAtEnd() && !Check("}"))
+        {
+            var pos = _position;
+            try
+            {
+                stmts.Add(ParseStatement());
+            }
+            catch (ParseError)
+            {
+                SynchronizeStatement();
+            }
+            if (_position == pos) Advance();
+        }
+        Consume("}", "Expected '}' to end block");
+        return new BlockStatementNode(new SourceSpan(open.Position, PreviousOrPeek().Position)) { Statements = stmts };
     }
 
     private ReturnStatementNode ParseReturnStatement()
@@ -686,7 +808,7 @@ public sealed class Parser(List<Token> tokens, string file)
     }
 
     /// <summary>
-    /// Skip tokens until we can plausibly start a new member, or until end of class body.
+    /// Skip tokens until we can plausibly start a new member, or until the end of the class body.
     /// </summary>
     private void SynchronizeClassMember()
     {
@@ -804,7 +926,7 @@ public sealed class Parser(List<Token> tokens, string file)
     private bool Check(string lexeme) => Peek().Value == lexeme;
 
     private static bool IsBinaryOperator(string lexeme) =>
-        lexeme is "+" or "-" or "*" or "/" or "==" or "!=" or ">" or "<" or ">=" or "<=";
+        lexeme is "+" or "-" or "*" or "/" or "==" or "!=" or ">" or "<" or ">=" or "<=" or "%";
 
     #endregion
 }

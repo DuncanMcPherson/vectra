@@ -56,6 +56,19 @@ public sealed class MethodBodyEmitter
                 _buffer.Emit(Opcode.NEW_OBJ, typeIndex);
                 _buffer.Emit(Opcode.STORE_LOCAL, (ushort)objAlloc.Target.SlotIndex);
                 break;
+            case BoundIfStatement @if:
+                EmitIf(@if);
+                break;
+            case BoundWhileStatement @while:
+                EmitWhile(@while);
+                break;
+            case BoundTryStatement @try:
+                EmitTry(@try);
+                break;
+            case BoundThrowStatement @throw:
+                EmitThrow(@throw);
+                break;
+            // 'for' statements are lowered to while, should never get here
             default:
                 throw new InvalidOperationException(
                     $"Unsupported statement kind in emit: {node.GetType().Name}");
@@ -81,6 +94,65 @@ public sealed class MethodBodyEmitter
         _buffer.Emit(Opcode.RET);
     }
 
+    private void EmitIf(BoundIfStatement node)
+    {
+        EmitExpression(node.Condition);
+        var jumpToElse = _buffer.EmitJump(Opcode.JMP_FALSE);
+        
+        EmitStatement(node.ThenBranch);
+
+        if (node.ElseBranch is not null)
+        {
+            var jumpOverElse = _buffer.EmitJump(Opcode.JMP);
+            _buffer.PatchJump(jumpToElse);
+            EmitStatement(node.ElseBranch);
+            _buffer.PatchJump(jumpOverElse);
+        }
+        else
+        {
+            _buffer.PatchJump(jumpToElse);
+        }
+    }
+
+    private void EmitWhile(BoundWhileStatement node)
+    {
+        var loopStart = _buffer.Position;
+        EmitExpression(node.Condition);
+        var exitJump = _buffer.EmitJump(Opcode.JMP_FALSE);
+        EmitStatement(node.Body);
+        _buffer.Emit(Opcode.JMP, (ushort)loopStart);
+        _buffer.PatchJump(exitJump);
+    }
+
+    private void EmitTry(BoundTryStatement node)
+    {
+        var handlerJump = _buffer.EmitJump(Opcode.ENTER_ATTEMPT);
+        EmitStatement(node.TryBlock);
+        _buffer.Emit(Opcode.LEAVE_ATTEMPT);
+        var afterHandlerJump = _buffer.EmitJump(Opcode.JMP);
+        _buffer.PatchJump(handlerJump);
+        if (node.CatchClause is { } c)
+        {
+            if (c.ExceptionLocal is not null)
+                _buffer.Emit(Opcode.STORE_LOCAL, (ushort)c.ExceptionLocal.SlotIndex);
+            else
+                _buffer.Emit(Opcode.POP);
+            EmitStatement(c.Body);
+        }
+
+        _buffer.PatchJump(afterHandlerJump);
+
+        if (node.FinallyBlock is null) return;
+        _buffer.Emit(Opcode.ENTER_DEBRIEF);
+        EmitStatement(node.FinallyBlock);
+        _buffer.Emit(Opcode.LEAVE_DEBRIEF);
+    }
+    
+    private void EmitThrow(BoundThrowStatement node)
+    {
+        EmitExpression(node.Expression);
+        _buffer.Emit(Opcode.ABORT);
+    }
 
     private void EmitExpression(BoundExpression node)
     {

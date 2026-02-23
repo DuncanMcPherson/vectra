@@ -40,10 +40,10 @@ public class Lexer
         "for", // Consider adding "in" and "foreach"
         "break",
         "continue",
-        "try",
-        "catch",
-        "finally",
-        "throw"
+        "attempt",
+        "recover",
+        "debrief",
+        "abort"
     ];
 
     /// <summary>
