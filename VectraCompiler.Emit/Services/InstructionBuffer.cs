@@ -40,10 +40,28 @@ public sealed class InstructionBuffer
         return patchPosition;
     }
 
+    public (int, int) EmitJump2(Opcode opcode)
+    {
+        _bytes.Add((byte)opcode);
+        var patch1 = _bytes.Count;
+        _bytes.Add(0x00);
+        _bytes.Add(0x00);
+        var patch2 = _bytes.Count;
+        _bytes.Add(0x00);
+        _bytes.Add(0x00);
+        return (patch1, patch2);
+    }
+
     public void PatchJump(int patchPosition)
     {
         var target = (ushort)_bytes.Count;
         _bytes[patchPosition] = (byte)(target & 0xFF);
         _bytes[patchPosition + 1] = (byte)(target >> 8);
+    }
+
+    public void PatchJump(int patchPosition, int value)
+    {
+        _bytes[patchPosition] = (byte)(value & 0xFF);
+        _bytes[patchPosition + 1] = (byte)(value >> 8);
     }
 }

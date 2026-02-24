@@ -126,23 +126,32 @@ public sealed class MethodBodyEmitter
 
     private void EmitTry(BoundTryStatement node)
     {
-        var handlerJump = _buffer.EmitJump(Opcode.ENTER_ATTEMPT);
+        var (handlerJump, debriefJump) = _buffer.EmitJump2(Opcode.ENTER_ATTEMPT);
         EmitStatement(node.TryBlock);
         _buffer.Emit(Opcode.LEAVE_ATTEMPT);
         var afterHandlerJump = _buffer.EmitJump(Opcode.JMP);
-        _buffer.PatchJump(handlerJump);
         if (node.CatchClause is { } c)
         {
+            _buffer.PatchJump(handlerJump);
             if (c.ExceptionLocal is not null)
                 _buffer.Emit(Opcode.STORE_LOCAL, (ushort)c.ExceptionLocal.SlotIndex);
             else
                 _buffer.Emit(Opcode.POP);
             EmitStatement(c.Body);
         }
+        else
+        {
+            _buffer.PatchJump(handlerJump, 0);
+        }
 
         _buffer.PatchJump(afterHandlerJump);
 
-        if (node.FinallyBlock is null) return;
+        if (node.FinallyBlock is null)
+        {
+            _buffer.PatchJump(debriefJump, 0);
+            return;
+        }
+        _buffer.PatchJump(debriefJump);
         _buffer.Emit(Opcode.ENTER_DEBRIEF);
         EmitStatement(node.FinallyBlock);
         _buffer.Emit(Opcode.LEAVE_DEBRIEF);

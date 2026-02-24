@@ -28,7 +28,7 @@ class Program {
         number percent = 0;
         for (let i = 0; i < rounds; i = i + 1) {
             let rem = i % 10;
-            let shouldWin = rem <= 7;
+            let shouldWin = rem < 7;
             if (shouldWin) {
                 player.Win();
             } else {

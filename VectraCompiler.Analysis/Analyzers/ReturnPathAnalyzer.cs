@@ -28,6 +28,18 @@ public sealed class ReturnPathAnalyzer : IAnalyzer
     {
         BoundReturnStatement => true,
         BoundBlockStatement block => BlockAlwaysReturns(block),
+        BoundTryStatement tryStatement => AttemptBlockAlwaysReturns(tryStatement),
         _ => false
     };
+    
+    private static bool AttemptBlockAlwaysReturns(BoundTryStatement tryStatement)
+    {
+        var attemptReturns = BlockAlwaysReturns(tryStatement.TryBlock);
+        bool? recoverReturns;
+        if (tryStatement.CatchClause is { } catchClause)
+            recoverReturns = BlockAlwaysReturns(catchClause.Body);
+        else
+            recoverReturns = null;
+        return attemptReturns && (recoverReturns is not null && recoverReturns.Value || recoverReturns is null);
+    }
 }

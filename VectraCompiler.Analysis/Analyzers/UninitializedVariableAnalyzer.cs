@@ -43,6 +43,15 @@ public sealed class UninitializedVariableAnalyzer : IAnalyzer
             case BoundBlockStatement nested:
                 CheckBlock(nested, assigned, diagnostics);
                 break;
+            case BoundTryStatement attempt:
+                CheckBlock(attempt.TryBlock, assigned, diagnostics);
+                if (attempt.CatchClause is {} recover)
+                    CheckBlock(recover.Body, assigned, diagnostics);
+                if (attempt.FinallyBlock is not null)
+                {
+                    CheckBlock(attempt.FinallyBlock, assigned, diagnostics);
+                }
+                break;
         }
     }
 
