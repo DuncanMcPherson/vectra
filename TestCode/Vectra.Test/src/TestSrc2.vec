@@ -23,6 +23,8 @@ class Player {
     
     number GetVictoryPercentage() {
         let totalMatches = this.Wins + this.Losses;
+        if (totalMatches == 0)
+            abort new Error("No matches played");
         let of1 = this.Wins / totalMatches;
         return of1 * 100;
     }
