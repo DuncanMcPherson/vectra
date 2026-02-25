@@ -12,3 +12,4 @@ riderModule.iml
 logs/
 node_modules/
 out/
+.claude/
