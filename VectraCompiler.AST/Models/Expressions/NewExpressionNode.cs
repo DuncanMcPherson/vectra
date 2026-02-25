@@ -8,6 +8,5 @@ public class NewExpressionNode(string typeName, IList<IExpressionNode> arguments
     public IList<IExpressionNode> Arguments { get; } = arguments;
     public override SourceSpan Span { get; } = span;
 
-    public override T Visit<T>(IAstVisitor<T> visitor) => visitor.VisitNewExpression(this);
     public override string ToPrintable() => $"new {TypeName}({string.Join(", ", Arguments)})";
 }

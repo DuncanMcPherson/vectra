@@ -11,7 +11,6 @@ public class CallExpressionNode(
     public IList<IExpressionNode> Arguments { get; } = arguments;
     public override SourceSpan Span { get; } = span;
     
-    public override T Visit<T>(IAstVisitor<T> visitor) => visitor.VisitCallExpression(this);
     public override string ToPrintable()
     {
         return $"{Target}({string.Join(", ", Arguments)})";

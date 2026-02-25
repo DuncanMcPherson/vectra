@@ -10,6 +10,5 @@ public class ReturnStatementNode(IExpressionNode? value, SourceSpan span) : AstN
 
     public ReturnStatementNode(SourceSpan span) : this(null, span) { }
 
-    public override T Visit<T>(IAstVisitor<T> visitor) => visitor.VisitReturnStatement(this);
     public override string ToPrintable() => $"return {Value};";
 }

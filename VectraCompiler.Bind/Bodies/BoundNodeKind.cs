@@ -18,5 +18,10 @@ public enum BoundNodeKind
     NativeFunctionExpression,
     NativeFunctionCallExpression,
     ObjectAllocationStatement,
-    UnaryExpression
+    UnaryExpression,
+    IfStatement,
+    WhileStatement,
+    ForStatement,
+    TryStatement,
+    ThrowStatement
 }

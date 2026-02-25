@@ -9,8 +9,6 @@ public class ClassDeclarationNode(string name, IList<IMemberNode> members, Sourc
     public IList<IMemberNode> Members { get; } = members;
     public override SourceSpan Span { get; } = span;
 
-    public override T Visit<T>(IAstVisitor<T> visitor) => visitor.VisitClassDeclaration(this);
-
     public override string ToPrintable()
     {
         return $"class {Name} {{\n\t{string.Join("\n\n\t", Members)}\n}}";

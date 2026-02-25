@@ -1,5 +1,4 @@
-﻿using VectraCompiler.AST.Models.Declarations;
-using VectraCompiler.Bind.Bodies;
+﻿using VectraCompiler.Bind.Bodies;
 using VectraCompiler.Bind.Bodies.Expressions;
 using VectraCompiler.Bind.Bodies.Statements;
 using VectraCompiler.Bind.Models;
@@ -42,6 +41,11 @@ public abstract class BoundTreeRewriter
             BoundExpressionStatement expr => RewriteExpressionStatement(expr),
             BoundVariableDeclarationStatement varDecl => RewriteVariableDeclarationStatement(varDecl),
             BoundReturnStatement ret => RewriteReturnStatement(ret),
+            BoundWhileStatement whileStmt => RewriteWhileStatement(whileStmt),
+            BoundIfStatement ifStmt => RewriteIfStatement(ifStmt),
+            BoundForStatement forStmt => RewriteForStatement(forStmt),
+            BoundTryStatement tryStmt => RewriteTryStatement(tryStmt),
+            BoundThrowStatement throwStmt => RewriteThrowStatement(throwStmt),
             _ => (BoundStatement)WriteErrorNode(node)
         };
     }
@@ -50,6 +54,64 @@ public abstract class BoundTreeRewriter
     {
         _diag.Error(ErrorCode.UnsupportedStatement, $"Unsupported statement type: {node.GetType().Name}", node.Span);
         return node;
+    }
+
+    public virtual BoundStatement RewriteIfStatement(BoundIfStatement node)
+    {
+        var condition = RewriteExpression(node.Condition);
+        var then = RewriteStatement(node.ThenBranch);
+        var elseBranch = node.ElseBranch != null ? RewriteStatement(node.ElseBranch) : null;
+        if (condition == node.Condition && then == node.ThenBranch && elseBranch == node.ElseBranch)
+            return node;
+        return new BoundIfStatement(node.Span, condition, then, elseBranch);
+    }
+
+    public virtual BoundStatement RewriteWhileStatement(BoundWhileStatement node)
+    {
+        var condition = RewriteExpression(node.Condition);
+        var body = RewriteStatement(node.Body);
+        if (condition == node.Condition && body == node.Body)
+            return node;
+        return new BoundWhileStatement(node.Span, condition, body);
+    }
+
+    public virtual BoundStatement RewriteForStatement(BoundForStatement node)
+    {
+        var statements = new List<BoundStatement>();
+        if (node.Initializer != null)
+            statements.Add(RewriteStatement(node.Initializer));
+        var condition = node.Condition != null
+            ? RewriteExpression(node.Condition)
+            : new BoundLiteralExpression(node.Span, true, BuiltInTypeSymbol.Bool);
+        var bodyStatements = new List<BoundStatement> { RewriteStatement(node.Body) };
+        if (node.Increment != null)
+            bodyStatements.Add(new BoundExpressionStatement(node.Span, RewriteExpression(node.Increment)));
+        var whileBody = new BoundBlockStatement(node.Span, bodyStatements);
+        statements.Add(new BoundWhileStatement(node.Span, condition, whileBody));
+        return new BoundBlockStatement(node.Span, statements);
+    }
+    
+    public virtual BoundStatement RewriteTryStatement(BoundTryStatement node)
+    {
+        var tryBlock = RewriteBlockStatement(node.TryBlock);
+        BoundCatchClause? catchClause = null;
+        if (node.CatchClause is { } c)
+        {
+            var body = RewriteBlockStatement(c.Body);
+            catchClause = body == c.Body ? c : new BoundCatchClause(c.Span, c.ExceptionLocal, body);
+        }
+        BoundBlockStatement? finallyBlock = node.FinallyBlock != null
+            ? RewriteBlockStatement(node.FinallyBlock)
+            : null;
+        if (tryBlock == node.TryBlock && catchClause == node.CatchClause && finallyBlock == node.FinallyBlock)
+            return node;
+        return new BoundTryStatement(node.Span, tryBlock, catchClause, finallyBlock);
+    }
+    
+    public virtual BoundStatement RewriteThrowStatement(BoundThrowStatement node)
+    {
+        var expr = RewriteExpression(node.Expression);
+        return expr == node.Expression ? node : new BoundThrowStatement(node.Span, expr);
     }
 
     public virtual BoundBlockStatement RewriteBlockStatement(BoundBlockStatement node)

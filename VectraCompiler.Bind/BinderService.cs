@@ -16,17 +16,25 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
     [
         // int/int
         new(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
-        new(BoundBinaryOperatorKind.Subtract, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
-        new(BoundBinaryOperatorKind.Multiply, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
-        new(BoundBinaryOperatorKind.Divide, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
-        new(BoundBinaryOperatorKind.Modulo, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number),
+        new(BoundBinaryOperatorKind.Subtract, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number,
+            BuiltInTypeSymbol.Number),
+        new(BoundBinaryOperatorKind.Multiply, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number,
+            BuiltInTypeSymbol.Number),
+        new(BoundBinaryOperatorKind.Divide, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number,
+            BuiltInTypeSymbol.Number),
+        new(BoundBinaryOperatorKind.Modulo, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number,
+            BuiltInTypeSymbol.Number),
 
         new(BoundBinaryOperatorKind.Equals, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Bool),
-        new(BoundBinaryOperatorKind.NotEquals, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Bool),
+        new(BoundBinaryOperatorKind.NotEquals, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number,
+            BuiltInTypeSymbol.Bool),
         new(BoundBinaryOperatorKind.Less, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Bool),
-        new(BoundBinaryOperatorKind.LessOrEqual, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Bool),
-        new(BoundBinaryOperatorKind.Greater, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Bool),
-        new(BoundBinaryOperatorKind.GreaterOrEqual, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Bool),
+        new(BoundBinaryOperatorKind.LessOrEqual, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number,
+            BuiltInTypeSymbol.Bool),
+        new(BoundBinaryOperatorKind.Greater, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number,
+            BuiltInTypeSymbol.Bool),
+        new(BoundBinaryOperatorKind.GreaterOrEqual, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.Number,
+            BuiltInTypeSymbol.Bool),
 
         // bool/bool
         new(BoundBinaryOperatorKind.Equals, BuiltInTypeSymbol.Bool, BuiltInTypeSymbol.Bool, BuiltInTypeSymbol.Bool),
@@ -37,15 +45,19 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         // string/string
         new(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String),
         new(BoundBinaryOperatorKind.Equals, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Bool),
-        new(BoundBinaryOperatorKind.NotEquals, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Bool),
+        new(BoundBinaryOperatorKind.NotEquals, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String,
+            BuiltInTypeSymbol.Bool),
         new(BoundBinaryOperatorKind.Less, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Bool),
-        new(BoundBinaryOperatorKind.LessOrEqual, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Bool),
-        new(BoundBinaryOperatorKind.Greater, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Bool),
-        new(BoundBinaryOperatorKind.GreaterOrEqual, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Bool),
+        new(BoundBinaryOperatorKind.LessOrEqual, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String,
+            BuiltInTypeSymbol.Bool),
+        new(BoundBinaryOperatorKind.Greater, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String,
+            BuiltInTypeSymbol.Bool),
+        new(BoundBinaryOperatorKind.GreaterOrEqual, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String,
+            BuiltInTypeSymbol.Bool),
 
         // string/number or number/string (for string interpolation)
-        new (BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String),
-        new (BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String),
+        new(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String),
+        new(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Number, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String),
         new(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.Bool, BuiltInTypeSymbol.String, BuiltInTypeSymbol.String),
         new(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Bool, BuiltInTypeSymbol.String),
     ];
@@ -155,8 +167,81 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             ExpressionStatementNode e => new BoundExpressionStatement(e.Span, BindExpression(e.Expression, ctx)),
             ReturnStatementNode r => BindReturnStatement(r, ctx),
             VariableDeclarationStatementNode v => BindVariableDeclarationStatement(v, ctx),
+            IfStatementNode i => BindIfStatement(i, ctx),
+            WhileStatementNode w => BindWhileStatement(w, ctx),
+            ForStatementNode f => BindForStatement(f, ctx),
+            TryStatementNode t => BindTryStatement(t, ctx),
+            ThrowStatementNode t => BindThrowStatement(t, ctx),
             _ => BindBadStatement(node, ctx)
         };
+    }
+
+    private BoundStatement BindIfStatement(IfStatementNode node, BindContext ctx)
+    {
+        var condition = BindExpression(node.Condition, ctx);
+        if (condition.Type != BuiltInTypeSymbol.Bool)
+            ctx.Diagnostics.Error(ErrorCode.TypeMismatch,
+                $"Condition of 'if' statement must be of type 'bool', but got '{condition.Type.Name}'.");
+        var then = BindStatement(node.ThenBranch, ctx.PushScope());
+        var @else = node.ElseBranch is not null ? BindStatement(node.ElseBranch, ctx.PushScope()) : null;
+        return new BoundIfStatement(node.Span, condition, then, @else);
+    }
+    
+    private BoundStatement BindWhileStatement(WhileStatementNode node, BindContext ctx)
+    {
+        var condition = BindExpression(node.Condition, ctx);
+        if (condition.Type != BuiltInTypeSymbol.Bool)
+            ctx.Diagnostics.Error(ErrorCode.TypeMismatch, "While condition must be bool.");
+        var body = BindStatement(node.Body, ctx.PushScope());
+        return new BoundWhileStatement(node.Span, condition, body);
+    }
+    
+    private BoundStatement BindForStatement(ForStatementNode node, BindContext ctx)
+    {
+        var forCtx = ctx.PushScope();
+        var init = node.Initializer != null ? BindStatement(node.Initializer, forCtx) : null;
+        BoundExpression? condition = null;
+        if (node.Condition != null)
+        {
+            condition = BindExpression(node.Condition, forCtx);
+            if (condition.Type != BuiltInTypeSymbol.Bool)
+                forCtx.Diagnostics.Error(ErrorCode.TypeMismatch, "For condition must be bool.");
+        }
+        var increment = node.Increment != null ? BindExpression(node.Increment, forCtx) : null;
+        var body = BindStatement(node.Body, forCtx);
+        return new BoundForStatement(node.Span, init, condition, increment, body);
+    }
+
+    private BoundStatement BindTryStatement(TryStatementNode node, BindContext ctx)
+    {
+        var tryBlock = BindBlock(node.TryBlock, ctx.PushScope());
+        BoundCatchClause? catchClause = null;
+        if (node.CatchClause is { } c)
+        {
+            var catchCtx = ctx.PushScope();
+            LocalSymbol? exLocal = null;
+            if (c.ExceptionName != null)
+            {
+                var exType = c.ExceptionType != null ? ResolveType(c.ExceptionType, ctx) : BuiltInTypeSymbol.Error;
+                exLocal = new LocalSymbol(c.ExceptionName, (NamedTypeSymbol)exType)
+                {
+                    SlotIndex = ctx.SlotAllocator.Allocate()
+                };
+                catchCtx.Scope.TryDeclare(exLocal);
+            }
+            var catchBody = BindBlock(c.Body, catchCtx);
+            catchClause = new BoundCatchClause(c.Span, exLocal, catchBody);
+        }
+        BoundBlockStatement? finallyBlock = null;
+        if (node.FinallyBlock != null)
+            finallyBlock = BindBlock(node.FinallyBlock, ctx.PushScope());
+        return new BoundTryStatement(node.Span, tryBlock, catchClause, finallyBlock);
+    }
+
+    private BoundStatement BindThrowStatement(ThrowStatementNode node, BindContext ctx)
+    {
+        var expr = BindExpression(node.Expression, ctx);
+        return new BoundThrowStatement(node.Span, expr);
     }
 
     private BoundStatement BindBadStatement(IStatementNode node, BindContext ctx)
@@ -198,7 +283,8 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             if (inferredType == BuiltInTypeSymbol.Unknown || inferredType == BuiltInTypeSymbol.Error)
             {
                 ctx.Diagnostics.Warning(ErrorCode.UnableToInferType, $"Cannot infer type of {node.Name}");
-            } else if (IsNullLiteral(init))
+            }
+            else if (IsNullLiteral(init))
             {
                 ctx.Diagnostics.Error(ErrorCode.UnableToInferType,
                     $"Cannot infer type of '{node.Name}' from 'null'. Add an explicit type.");
@@ -238,6 +324,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
                 ctx.Diagnostics.Error(ErrorCode.IllegalStatement,
                     "Cannot return void from a method with non-void return type");
             }
+
             return new BoundReturnStatement(node.Span, null);
         }
 
@@ -258,6 +345,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             ctx.Diagnostics.Error(ErrorCode.TypeMismatch,
                 $"'{ctx.ContainingCallable!.Name}': cannot return '{expr.Type.Name}' from a method with return type '{expected.Name}'.");
         }
+
         return new BoundReturnStatement(node.Span, expr);
     }
 
@@ -349,19 +437,24 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
                     $"Native function '{nativeFunc.Native.Name}' expects {nativeFunc.Native.ParameterTypes.Count} argument(s) but got {args.Length}.");
                 return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
             }
+
             return new BoundNativeFunctionCallExpression(node.Span, nativeFunc.Native, args);
         }
+
         if (memberAccess is not BoundMethodGroupExpression boundAccess)
         {
             ctx.Diagnostics.Error(ErrorCode.TargetNotCallable, $"Cannot call method on non-member access expression.");
             return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
         }
+
         var functions = boundAccess.Candidates;
         if (functions.Length == 0)
         {
-            ctx.Diagnostics.Error(ErrorCode.IdentifierNotFound, $"No functions found on type '{boundAccess.Receiver.Type.Name}'");
+            ctx.Diagnostics.Error(ErrorCode.IdentifierNotFound,
+                $"No functions found on type '{boundAccess.Receiver.Type.Name}'");
             return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
         }
+
         var best = functions.FirstOrDefault(f => f.Arity == args.Length + 1) ?? functions.First();
         var expectedParams = best.Parameters.Skip(1).ToArray();
         for (var i = 0; i < args.Length && i < expectedParams.Length; i++)
@@ -372,9 +465,11 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
                 !ReferenceEquals(argType, paramType))
             {
                 ctx.Diagnostics.Error(ErrorCode.TypeMismatch,
-                    $"Argument {i + 1} of '{best.Name}' has type '{argType.Name}', but expected '{paramType.Name}'.", args[i].Span);
+                    $"Argument {i + 1} of '{best.Name}' has type '{argType.Name}', but expected '{paramType.Name}'.",
+                    args[i].Span);
             }
         }
+
         return new BoundCallExpression(node.Span, best, boundAccess.Receiver, args);
     }
 
@@ -385,7 +480,8 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
 
         if (receiverType is not NamedTypeSymbol namedType)
         {
-            ctx.Diagnostics.Error(ErrorCode.IllegalAccess, $"Cannot access member '{node.TargetName}' of non-type '{receiverType.Name}'");
+            ctx.Diagnostics.Error(ErrorCode.IllegalAccess,
+                $"Cannot access member '{node.TargetName}' of non-type '{receiverType.Name}'");
             return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
         }
 
@@ -436,7 +532,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             ctx.Diagnostics.Error(ErrorCode.TypeNotFound, $"Cannot find constructor scope for type '{namedType.Name}'");
             return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
         }
-        
+
         var ctors = ctorScope.Lookup(namedType.Name).OfType<ConstructorSymbol>().ToArray();
         if (ctors.Length == 0)
         {
@@ -448,9 +544,11 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         var ctor = ctors.FirstOrDefault(c => c.Arity == requestedArity);
         if (ctor is null)
         {
-            ctx.Diagnostics.Error(ErrorCode.CannotFindConstructor, $"Cannot find constructor for '{type.Name}' with {requestedArity - 1} arguments");
+            ctx.Diagnostics.Error(ErrorCode.CannotFindConstructor,
+                $"Cannot find constructor for '{type.Name}' with {requestedArity - 1} arguments");
             return new BoundErrorExpression(node.Span, type);
         }
+
         return new BoundNewExpression(node.Span, namedType, ctor, args);
     }
 
@@ -462,12 +560,14 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             ctx.Diagnostics.Error(ErrorCode.TypeNotFound, $"Unknown type '{typeName}'.");
             return BuiltInTypeSymbol.Error;
         }
+
         var type = candidates.OfType<TypeSymbol>().FirstOrDefault();
         if (type is null)
         {
             ctx.Diagnostics.Error(ErrorCode.TypeNotFound, $"'{typeName}' is not a type.");
             return BuiltInTypeSymbol.Error;
         }
+
         return type;
     }
 
@@ -498,6 +598,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
                     $"Cannot compare '{left.Name}' and '{right.Name}' with '{opToken}'. Types must match");
                 return null;
             }
+
             // Comparison between named types is always bool
             return new BoundBinaryOperator(kind.Value, left, right, BuiltInTypeSymbol.Bool);
         }
@@ -512,8 +613,9 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             }
         }
 
-        ctx.Diagnostics.Error(ErrorCode.InvalidOperator, $"Operator '{opToken}' is not defined for '{left.Name}' and '{right.Name}'.");
-        
+        ctx.Diagnostics.Error(ErrorCode.InvalidOperator,
+            $"Operator '{opToken}' is not defined for '{left.Name}' and '{right.Name}'.");
+
         return null;
     }
 
@@ -523,9 +625,11 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         var op = BoundUnaryOperator.Bind(node.Operator, operand.Type);
         if (op is null)
         {
-            ctx.Diagnostics.Error(ErrorCode.TypeMismatch, $"Operator '{node.Operator}' cannot be applied to operand of type '{operand.Type.Name}'.");
+            ctx.Diagnostics.Error(ErrorCode.TypeMismatch,
+                $"Operator '{node.Operator}' cannot be applied to operand of type '{operand.Type.Name}'.");
             return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
         }
+
         return new BoundUnaryExpression(node.Span, op, operand);
     }
 
@@ -545,6 +649,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             ">=" => BoundBinaryOperatorKind.GreaterOrEqual,
             "&&" => BoundBinaryOperatorKind.LogicalAnd,
             "||" => BoundBinaryOperatorKind.LogicalOr,
+            "%" => BoundBinaryOperatorKind.Modulo,
             _ => null
         };
     }
@@ -572,7 +677,8 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         }
     }
 
-    private BoundExpression ConvertIfNeeded(BoundExpression expr, TypeSymbol targetType, BindContext ctx, SourceSpan span)
+    private BoundExpression ConvertIfNeeded(BoundExpression expr, TypeSymbol targetType, BindContext ctx,
+        SourceSpan span)
     {
         if (ReferenceEquals(expr.Type, targetType))
             return expr;

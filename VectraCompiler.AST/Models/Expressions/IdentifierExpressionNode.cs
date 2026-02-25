@@ -7,8 +7,6 @@ public class IdentifierExpressionNode(string name, SourceSpan span) : AstNodeBas
     public string Name { get; } = name;
     public override SourceSpan Span { get; } = span;
 
-    public override T Visit<T>(IAstVisitor<T> visitor) => visitor.VisitIdentifierExpression(this);
-
     public override string ToPrintable()
     {
         return $"{Name}";

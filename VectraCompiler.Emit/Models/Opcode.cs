@@ -41,6 +41,11 @@ public enum Opcode : byte
     JMP = 0X70,
     JMP_TRUE = 0X71,
     JMP_FALSE = 0X72,
+    ABORT = 0X73,
+    ENTER_ATTEMPT = 0X74,
+    LEAVE_ATTEMPT = 0X75,
+    ENTER_DEBRIEF = 0X76,
+    LEAVE_DEBRIEF = 0X77,
 }
 
 public enum ConstantKind : byte

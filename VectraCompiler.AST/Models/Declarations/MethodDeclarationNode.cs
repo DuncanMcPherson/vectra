@@ -11,10 +11,6 @@ public class MethodDeclarationNode(string name, IList<VParameter> parameters, Bl
     public override BlockStatementNode Body { get; } = body;
     public override SourceSpan Span { get; } = span;
     public string ReturnType { get; } = returnType;
-    public override T Visit<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitMethodDeclaration(this);
-    }
 
     public override string ToPrintable()
     {

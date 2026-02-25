@@ -2,23 +2,52 @@ space Vectra.Test;
 
 class Program {
     void Main() {
+        attempt {
         Print("What is your name? ");
         let name = ReadLine();
         PrintLine("Hello " + name + "!");
         Print("How old are you? ");
         number age = ReadInt();
+        let attemptCount = 1; 
+        while (age < 18) {
+            Print("You must be at least 18 years old to play this game.");
+            Print("How old are you? ");
+            age = ReadInt();
+            attemptCount = attemptCount + 1;
+            if (attemptCount > 3) {
+                abort new Error("You have failed to meet the minimum age requirement.");
+            }
+        }
         let player = new Player(age, name);
         PrintLine("Creating observer...");
         let observer = new Observer();
         PrintLine("Observer created.");
         observer.Observe(player);
-        let percent = player.GetVictoryPercentage();
-        PrintLine(player.Name + " has won " + percent + "% of the time");
-        player.Win();
-        percent = player.GetVictoryPercentage();
-        PrintLine(player.Name + " has won " + percent + "% of the time");
-        player.Lose();
-        percent = player.GetVictoryPercentage();
-        PrintLine(player.Name + " has won " + percent + "% of the time");
+        Print("How many rounds will you play? ");
+        number rounds = ReadInt();
+        number percent = 0;
+        for (let i = 0; i < rounds; i = i + 1) {
+            let rem = i % 10;
+            let shouldWin = rem < 7;
+            if (shouldWin) {
+                player.Win();
+            } else {
+                player.Lose();
+            }
+            percent = player.GetVictoryPercentage();
+            PrintLine(player.Name + " has won " + percent + "% of the time");
+        }
+        } recover (Error e) {
+            PrintLine("An Error Occurred: " + e.Message);
+        } debrief {
+            PrintLine("Goodbye!");
+        }
+    }
+}
+
+class Error {
+    string Message { get; set; }
+    Error(string message) {
+        this. Message = message;
     }
 }
