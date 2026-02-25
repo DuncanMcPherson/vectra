@@ -81,6 +81,8 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             }
         }
 
+        var importedScopes = declarations.ImportedSpaces.GetImports(ctor.SourceFilePath ?? string.Empty);
+
         var ctx = new BindContext
         {
             Declarations = declarations,
@@ -88,6 +90,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             Scope = localScope,
             ContainingType = containingType,
             ContainingCallable = ctor,
+            ImportedScopes = importedScopes,
             ExpectedType = containingType,
             IsLValueTarget = false,
             SlotAllocator = allocator
@@ -104,12 +107,14 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             return null;
         var localScope = declarations.TypeMemberScopes[containingType];
         var allocator = new SlotAllocator();
+        var importedScopes = declarations.ImportedSpaces.GetImports(containingType.SourceFilePath ?? string.Empty);
         var ctx = new BindContext
         {
             Declarations = declarations,
             Diagnostics = diagnostics,
             Scope = localScope,
             ContainingType = containingType,
+            ImportedScopes = importedScopes,
             ExpectedType = field.Type,
             IsLValueTarget = true,
             SlotAllocator = allocator
@@ -126,6 +131,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         declarations.TypeMemberScopes.TryGetValue(containingType, out var memberScope);
         var localScope = new Scope(memberScope);
         allocator = new SlotAllocator();
+        var importedScopes = declarations.ImportedSpaces.GetImports(method.SourceFilePath ?? string.Empty);
 
         foreach (var parameter in method.Parameters)
         {
@@ -143,6 +149,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             Scope = localScope,
             ContainingType = containingType,
             ContainingCallable = method,
+            ImportedScopes = importedScopes,
             ExpectedType = method.ReturnType,
             IsLValueTarget = false,
             SlotAllocator = allocator
@@ -186,7 +193,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         var @else = node.ElseBranch is not null ? BindStatement(node.ElseBranch, ctx.PushScope()) : null;
         return new BoundIfStatement(node.Span, condition, then, @else);
     }
-    
+
     private BoundStatement BindWhileStatement(WhileStatementNode node, BindContext ctx)
     {
         var condition = BindExpression(node.Condition, ctx);
@@ -195,7 +202,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         var body = BindStatement(node.Body, ctx.PushScope());
         return new BoundWhileStatement(node.Span, condition, body);
     }
-    
+
     private BoundStatement BindForStatement(ForStatementNode node, BindContext ctx)
     {
         var forCtx = ctx.PushScope();
@@ -207,6 +214,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             if (condition.Type != BuiltInTypeSymbol.Bool)
                 forCtx.Diagnostics.Error(ErrorCode.TypeMismatch, "For condition must be bool.");
         }
+
         var increment = node.Increment != null ? BindExpression(node.Increment, forCtx) : null;
         var body = BindStatement(node.Body, forCtx);
         return new BoundForStatement(node.Span, init, condition, increment, body);
@@ -229,9 +237,11 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
                 };
                 catchCtx.Scope.TryDeclare(exLocal);
             }
+
             var catchBody = BindBlock(c.Body, catchCtx);
             catchClause = new BoundCatchClause(c.Span, exLocal, catchBody);
         }
+
         BoundBlockStatement? finallyBlock = null;
         if (node.FinallyBlock != null)
             finallyBlock = BindBlock(node.FinallyBlock, ctx.PushScope());
@@ -555,20 +565,27 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
     private TypeSymbol ResolveType(string typeName, BindContext ctx)
     {
         var candidates = ctx.Scope.Lookup(typeName);
-        if (candidates.Count == 0)
+        if (candidates.Count > 0)
         {
-            ctx.Diagnostics.Error(ErrorCode.TypeNotFound, $"Unknown type '{typeName}'.");
-            return BuiltInTypeSymbol.Error;
+            var type = candidates.OfType<TypeSymbol>().FirstOrDefault();
+            if (type is null)
+            {
+                ctx.Diagnostics.Error(ErrorCode.TypeNotFound, $"'{typeName}' is not a type.");
+                return BuiltInTypeSymbol.Error;
+            }
+
+            return type;
         }
 
-        var type = candidates.OfType<TypeSymbol>().FirstOrDefault();
-        if (type is null)
+        foreach (var scope in ctx.ImportedScopes)
         {
-            ctx.Diagnostics.Error(ErrorCode.TypeNotFound, $"'{typeName}' is not a type.");
-            return BuiltInTypeSymbol.Error;
+            var imported = scope.Lookup(typeName).OfType<TypeSymbol>().FirstOrDefault();
+            if (imported is not null)
+                return imported;
         }
-
-        return type;
+        
+        ctx.Diagnostics.Error(ErrorCode.TypeNotFound, $"Type '{typeName}' not found.");
+        return BuiltInTypeSymbol.Error;
     }
 
     private BoundBinaryOperator? ResolveBinaryOperator(string opToken, TypeSymbol left, TypeSymbol right,

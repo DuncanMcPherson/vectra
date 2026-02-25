@@ -1,3 +1,4 @@
+using System.Text;
 using VectraCompiler.AST.Lexing.Models;
 using VectraCompiler.AST.Models.Declarations;
 using VectraCompiler.AST.Models.Declarations.Interfaces;
@@ -15,13 +16,35 @@ public sealed class Parser(List<Token> tokens, string file)
 
     public ParseResult Parse()
     {
+        var enters = ParseEnterDirectives();
         var parsedSpace = ParseSpace();
 
         return new ParseResult(new VectraAstFile
         {
             FilePath = file,
+            EnterDirectives = enters,
             Space = parsedSpace
         }, _diagnostics.AsReadOnly());
+    }
+
+    private List<EnterDirectiveNode> ParseEnterDirectives()
+    {
+        var directives = new List<EnterDirectiveNode>();
+        while (!IsAtEnd() && Check("enter"))
+        {
+            var start = Advance();
+            var name = new StringBuilder();
+            var nameToken = Consume(TokenType.Identifier, "Expected space name after 'enter'");
+            name.Append(nameToken.Value);
+            while (!IsAtEnd() && Match("."))
+            {
+                var part = Consume(TokenType.Identifier, "Expected identifier after '.'");
+                name.Append('.').Append(part.Value);
+            }
+            Expect(";", "Expected ';' after space name");
+            directives.Add(new EnterDirectiveNode(name.ToString(), new SourceSpan(start.Position, PreviousOrPeek().Position)));
+        }
+        return directives;
     }
 
     private SpaceDeclarationNode ParseSpace(SpaceDeclarationNode? parent = null)

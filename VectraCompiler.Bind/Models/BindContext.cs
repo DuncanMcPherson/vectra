@@ -6,6 +6,7 @@ namespace VectraCompiler.Bind.Models;
 
 public sealed record BindContext
 {
+    public IReadOnlyList<Scope> ImportedScopes { get; init; } = [];
     public required DeclarationBindResult Declarations { get; init; }
     public required DiagnosticBag Diagnostics { get; init; }
     public required Scope Scope { get; init; }
@@ -17,9 +18,7 @@ public sealed record BindContext
     public BindContext PushScope() => this with { Scope = new Scope(Scope) };
     public BindContext WithExpectedType(TypeSymbol? expected) => this with { ExpectedType = expected };
     public BindContext WithLValueTarget(bool isTarget) => this with { IsLValueTarget = isTarget };
-
-    public BindContext WithContainingType(NamedTypeSymbol? type) => this with { ContainingType = type };
-    public BindContext WithContainingFunction(CallableSymbol? fn) => this with { ContainingCallable = fn };
+    public BindContext WithImportedScopes(IReadOnlyList<Scope> scopes) => this with { ImportedScopes = scopes };
 
     /// <summary>Convenience: look up the declaration symbol bound to an AST node from pass 1.</summary>
     public bool TryGetDeclaredSymbol(IAstNode node, out Symbol symbol)

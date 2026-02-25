@@ -38,12 +38,13 @@ public class Lexer
         "else",
         "while",
         "for", // Consider adding "in" and "foreach"
-        "break",
-        "continue",
+        // "break",
+        // "continue",
         "attempt",
         "recover",
         "debrief",
-        "abort"
+        "abort",
+        "enter"
     ];
 
     /// <summary>
