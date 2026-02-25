@@ -14,4 +14,6 @@ public static class Extensions
             return string.IsNullOrWhiteSpace(value);
         }
     }
+    
+    
 }

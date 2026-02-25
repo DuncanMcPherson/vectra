@@ -40,6 +40,7 @@ public static class BindPhaseRunner
                 var spacesByName = new Dictionary<(string ModuleName, string QualifiedName), Scope>();
                 var typeNodesBySymbol = new Dictionary<NamedTypeSymbol, ITypeDeclarationNode>();
                 var containingTypeByNode = new Dictionary<IMemberNode, NamedTypeSymbol>();
+                var importedScopes = new ImportedSpaceContext();
 
                 foreach (var module in package.Modules)
                 {
@@ -50,6 +51,28 @@ public static class BindPhaseRunner
                     {
                         ct.ThrowIfCancellationRequested();
                         BindSpaceDeclaration(moduleScope, file.Space, module.ModuleName, file.FilePath, symbolsByNode, typeMemberScopes, spacesByName, db, spaceScopes, typeNodesBySymbol);
+                    }
+
+                    foreach (var file in module.Files.Select(p => p.Tree))
+                    {
+                        foreach (var directive in file.EnterDirectives)
+                        {
+                            var matches = spacesByName
+                                .Where(kvp => kvp.Key.QualifiedName == directive.SpaceName)
+                                .Select(kvp => kvp.Value)
+                                .ToList();
+                            if (matches.Count < 1)
+                            {
+                                db.Error(ErrorCode.SpaceNotFound,
+                                    $"Cannot find space '{directive.SpaceName}' to import");
+                                continue;
+                            }
+
+                            foreach (var scope in matches)
+                            {
+                                importedScopes.AddImport(file.FilePath, scope);
+                            }
+                        }
                     }
                     task.Increment(1);
                 }
@@ -77,7 +100,8 @@ public static class BindPhaseRunner
                     PackageScope = packageScope,
                     SymbolsByNode = symbolsByNode,
                     TypeMemberScopes = typeMemberScopes,
-                    SpaceScopesByFullName = spacesByName
+                    SpaceScopesByFullName = spacesByName,
+                    ImportedSpaces = importedScopes
                 };
                 var binder = new BinderService(declarations, db);
 

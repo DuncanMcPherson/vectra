@@ -41,6 +41,7 @@ public enum ErrorCode
     TargetNotCallable = 0x3016,
     MemberRequiresThis = 0x3017,
     ArgumentCountMismatch = 0x3018,
+    SpaceNotFound = 0x3019,
     // Analysis errors
     MissingReturnPath = 0x4001,
     UnreachableCode = 0x4002,

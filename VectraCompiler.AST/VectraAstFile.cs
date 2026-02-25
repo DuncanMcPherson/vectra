@@ -6,6 +6,7 @@ namespace VectraCompiler.AST;
 public sealed record VectraAstFile
 {
     public string FileName => Path.GetFileName(FilePath);
+    public required List<EnterDirectiveNode> EnterDirectives { get; init; }
     public required string FilePath { get; init; }
     public required SpaceDeclarationNode Space { get; init; }
 }
