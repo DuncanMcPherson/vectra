@@ -17,6 +17,9 @@ public enum Opcode : byte
     NEW_OBJ = 0X30,
     LOAD_MEMBER = 0X31,
     STORE_MEMBER = 0X32,
+    NEW_ARR = 0X33,
+    LOAD_ELEM = 0X34,
+    STORE_ELEM = 0X35,
     
     CALL = 0X40,
     CALL_CTOR = 0X41,

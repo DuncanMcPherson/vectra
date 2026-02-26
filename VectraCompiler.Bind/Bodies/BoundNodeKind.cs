@@ -23,5 +23,7 @@ public enum BoundNodeKind
     WhileStatement,
     ForStatement,
     TryStatement,
-    ThrowStatement
+    ThrowStatement,
+    NewArrayExpression,
+    IndexAccessExpression
 }

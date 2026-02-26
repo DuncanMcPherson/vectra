@@ -8,15 +8,15 @@ public sealed class ForStatementNode(
     IExpressionNode? condition,
     IExpressionNode? increment,
     IStatementNode body,
-    SourceSpan span) : IStatementNode
+    SourceSpan span) : AstNodeBase, IStatementNode
 {
     public IStatementNode? Initializer => initializer;
     public IExpressionNode? Condition => condition;
     public IExpressionNode? Increment => increment;
     public IStatementNode Body => body;
-    public SourceSpan Span => span;
+    public override SourceSpan Span => span;
     
-    public string ToPrintable()
+    public override string ToPrintable()
     {
         return $"for ({Initializer}; {Condition}; {Increment}) {{\n{Body}\n}}";
     }

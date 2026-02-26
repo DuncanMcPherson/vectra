@@ -178,8 +178,25 @@ public abstract class BoundTreeRewriter
             BoundNewExpression @new => RewriteNewExpression(@new),
             BoundMethodGroupExpression mg => (BoundExpression)WriteErrorNode(mg),
             BoundUnaryExpression un => RewriteUnaryExpression(un),
+            BoundNewArrayExpression na => RewriteNewArrayExpression(na),
+            BoundIndexAccessExpression ia => RewriteIndexAccessExpression(ia),
             _ => node
         };
+    }
+
+    public virtual BoundExpression RewriteNewArrayExpression(BoundNewArrayExpression node)
+    {
+        var count = RewriteExpression(node.Count);
+        return count == node.Count ? node : new BoundNewArrayExpression(node.Span, node.ArrayType, count);
+    }
+    
+    public virtual BoundExpression RewriteIndexAccessExpression(BoundIndexAccessExpression node)
+    {
+        var target = RewriteExpression(node.Target);
+        var index = RewriteExpression(node.Index);
+        if (target == node.Target && index == node.Index)
+            return node;
+        return new BoundIndexAccessExpression(node.Span, target, index, node.Type);
     }
 
     public virtual BoundExpression RewriteBinaryExpression(BoundBinaryExpression node)

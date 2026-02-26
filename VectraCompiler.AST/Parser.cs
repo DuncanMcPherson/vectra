@@ -201,9 +201,10 @@ public sealed class Parser(List<Token> tokens, string file)
             {
                 do
                 {
-                    var typeToken = ConsumeTypeToken("Expected parameter type");
+                    var start = Peek().Position;
+                    var typeToken = ConsumeTypeName("Expected parameter type");
                     var nameToken = Consume(TokenType.Identifier, "Expected parameter name");
-                    parameters.Add(new VParameter(nameToken.Value, typeToken.Value, new SourceSpan(typeToken.Position, nameToken.Position)));
+                    parameters.Add(new VParameter(nameToken.Value, typeToken, new SourceSpan(start, nameToken.Position)));
                 } while (Match(","));
 
                 // Common recovery for your example: if '{' appears, treat ')' as missing.
@@ -279,9 +280,10 @@ public sealed class Parser(List<Token> tokens, string file)
             {
                 do
                 {
-                    var pTypeToken = ConsumeTypeToken("Expected parameter type");
+                    var start = Peek().Position;
+                    var pTypeToken = ConsumeTypeName("Expected parameter type");
                     var pNameToken = Consume(TokenType.Identifier, "Expected parameter name");
-                    parameters.Add(new(pNameToken.Value, pTypeToken.Value, new SourceSpan(pTypeToken.Position, pNameToken.Position)));
+                    parameters.Add(new(pNameToken.Value, pTypeToken, new SourceSpan(start, pNameToken.Position)));
                 } while (Match(","));
 
                 // Your common recovery: "Expected ')', found '{'"
@@ -508,7 +510,7 @@ public sealed class Parser(List<Token> tokens, string file)
 
             if (Match("("))
             {
-                exType = ConsumeTypeToken("Expected exception type").Value;
+                exType = ConsumeTypeName("Expected exception type");
                 if (Check(TokenType.Identifier)) exName = Advance().Value;
                 Expect(")", "Expected ')' after exception type");
             }
@@ -530,12 +532,12 @@ public sealed class Parser(List<Token> tokens, string file)
         return new TryStatementNode(tryBlock, catchClause, finallyBlock, new SourceSpan(start.Position, PreviousOrPeek().Position));
     }
 
-    private ThrowStatementNode ParseThrowStatement()
+    private AbortStatementNode ParseThrowStatement()
     {
         var start = Previous();
         var expr = ParseExpression();
         Expect(";", "Expected ';' after abort expression");
-        return new ThrowStatementNode(expr, new SourceSpan(start.Position, PreviousOrPeek().Position));
+        return new AbortStatementNode(expr, new SourceSpan(start.Position, PreviousOrPeek().Position));
     }
 
     private IStatementNode ParseBlockOrStatement()
@@ -736,6 +738,14 @@ public sealed class Parser(List<Token> tokens, string file)
                 continue;
             }
 
+            if (Match("["))
+            {
+                var index = ParseExpression();
+                Expect("]", "Expected ']' after index expression");
+                expr = new IndexAccessExpressionNode(expr, index, expr.Span with { EndLine = PreviousOrPeek().Position.Line, EndColumn = PreviousOrPeek().Position.Column });
+                continue;
+            }
+
             if (Match("("))
             {
                 var args = new List<IExpressionNode>();
@@ -768,9 +778,18 @@ public sealed class Parser(List<Token> tokens, string file)
         return expr;
     }
 
-    private NewExpressionNode ParseNewExpression(Token token)
+    private IExpressionNode ParseNewExpression(Token token)
     {
-        var typeToken = Consume(TokenType.Identifier, "Expected type name after 'new'");
+        var typeToken = ConsumeTypeToken("Expected type name after 'new'");
+
+        if (Match("["))
+        {
+            var count = ParseExpression();
+            Expect("]", "Expected ']' after array size expression");
+            var elementType = typeToken.Value;
+            return new NewArrayExpressionNode(elementType, count, new SourceSpan(token.Position, PreviousOrPeek().Position));
+        }
+        
         Expect("(", "Expected '(' after type name");
 
         var args = new List<IExpressionNode>();
@@ -931,6 +950,17 @@ public sealed class Parser(List<Token> tokens, string file)
     }
 
     private static bool IsTypeKeyword(string kw) => kw is "number" or "bool" or "string";
+
+    private string ConsumeTypeName(string errorMessage)
+    {
+        var token = ConsumeTypeToken(errorMessage);
+        var name = token.Value;
+        if (!Match("[")) return name;
+        Expect("]", "Expected ']' after type name");
+        name += "[]";
+
+        return name;
+    }
 
     private Token ConsumeTypeToken(string errorMessage)
     {

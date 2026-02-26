@@ -6,13 +6,13 @@ namespace VectraCompiler.AST.Models.Statements;
 public sealed class WhileStatementNode(
     IExpressionNode condition,
     IStatementNode body,
-    SourceSpan span) : IStatementNode
+    SourceSpan span) : AstNodeBase, IStatementNode
 {
     public IExpressionNode Condition => condition;
     public IStatementNode Body => body;
-    public SourceSpan Span => span;
+    public override SourceSpan Span => span;
 
-    public string ToPrintable()
+    public override string ToPrintable()
     {
         return $"while ({Condition}) {{\n{Body}\n}}";
     }

@@ -4,7 +4,7 @@ using VectraCompiler.AST.Lexing.Models;
 namespace VectraCompiler.AST.Lexing;
 
 /// <summary>
-/// This class parses a raw text representaion of a VEC file.
+/// This class parses a raw text representation of a VEC file.
 /// </summary>
 public class Lexer
 {
@@ -67,6 +67,11 @@ public class Lexer
     private static readonly HashSet<string> SingleCharOperators =
     [
         "+", "-", "*", "/", "=", "<", ">", "!", "%"
+    ];
+
+    private static readonly HashSet<string> CollectionOperators =
+    [
+        "[", "]", "(", ")"
     ];
 
     /// <summary>
@@ -279,14 +284,14 @@ public class Lexer
     /// </summary>
     /// <param name="op">The string to compare</param>
     /// <returns><c>true</c> if the string matches a defined operator, <c>false</c> otherwise</returns>
-    private bool IsOperator(string op) => MultiCharOperators.Contains(op) || SingleCharOperators.Contains(op);
+    private static bool IsOperator(string op) => MultiCharOperators.Contains(op) || SingleCharOperators.Contains(op) || CollectionOperators.Contains(op);
 
     /// <summary>
     /// Checks if the provided string matches a keyword (case-sensitive)
     /// </summary>
     /// <param name="value">The string to compare</param>
     /// <returns><c>true</c> if the string matches a reserved keyword, <c>false</c> otherwise</returns>
-    private bool IsKeyword(string value) => Keywords.Contains(value);
+    private static bool IsKeyword(string value) => Keywords.Contains(value);
 
     /// <summary>
     /// Advances our position to skip over comments and whitespaces

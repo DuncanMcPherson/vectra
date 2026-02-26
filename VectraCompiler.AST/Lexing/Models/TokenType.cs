@@ -8,5 +8,6 @@ public enum TokenType
     Keyword,
     Symbol,
     Operator,
+    CollectionOperator,
     EndOfFile
 }
