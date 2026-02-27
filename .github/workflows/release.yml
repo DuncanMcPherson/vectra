@@ -124,7 +124,7 @@ jobs:
         run: |
           dotnet nuget push out/nupkg/*.nupkg \
           --api-key ${{ secrets.GITHUB_TOKEN }} \
-          --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+          --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json \
           --skip-duplicate
       - name: Create GitHub release
         env:
