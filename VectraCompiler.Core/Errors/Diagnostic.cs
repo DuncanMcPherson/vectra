@@ -34,6 +34,12 @@ public sealed class DiagnosticBag
         return this;
     }
 
+    public void AddRange(IEnumerable<Diagnostic> diagnostics)
+    {
+        foreach (var diagnostic in diagnostics)
+            _items.Add(diagnostic);
+    }
+
     public DiagnosticBag Error(ErrorCode code, string message, string? file = null, int? line = null, int? column = null) =>
         Add(new(code, Severity.Error, message, file, line, column));
     public DiagnosticBag Error(ErrorCode code, string message, SourceSpan span) => Error(code, message, null, span.StartLine, span.StartColumn);
