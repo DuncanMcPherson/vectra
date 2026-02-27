@@ -15,4 +15,16 @@ public sealed class BuiltInTypeSymbol : TypeSymbol
     public static readonly BuiltInTypeSymbol Error = new("<error>");
     public static readonly BuiltInTypeSymbol Unknown = new("<unknown>");
 
+    private static readonly Dictionary<TypeSymbol, ArrayTypeSymbol> ArrayCache = [];
+
+    public static ArrayTypeSymbol ArrayOf(TypeSymbol elementType)
+    {
+        if (!ArrayCache.TryGetValue(elementType, out var arr))
+        {
+            arr = new ArrayTypeSymbol(elementType);
+            ArrayCache[elementType] = arr;
+        }
+
+        return arr;
+    }
 }

@@ -6,14 +6,14 @@ public sealed class TryStatementNode(
     BlockStatementNode tryBlock,
     CatchClauseNode? catchClause,
     BlockStatementNode? finallyBlock,
-    SourceSpan span) : IStatementNode
+    SourceSpan span) : AstNodeBase, IStatementNode
 {
     public BlockStatementNode TryBlock { get; } = tryBlock;
     public CatchClauseNode? CatchClause { get; } = catchClause;
     public BlockStatementNode? FinallyBlock { get; } = finallyBlock;
-    public SourceSpan Span { get; } = span;
+    public override SourceSpan Span { get; } = span;
 
-    public string ToPrintable()
+    public override string ToPrintable()
     {
         return
             $"attempt {{\n{TryBlock}\n}}{(CatchClause == null ? "" : $"\n{CatchClause}")}{(FinallyBlock == null ? "" : $"\ndebrief {{\n{FinallyBlock}\n}}")}";

@@ -7,14 +7,14 @@ public sealed class IfStatementNode(
     IExpressionNode condition,
     IStatementNode thenBranch,
     IStatementNode? elseBranch,
-    SourceSpan span) : IStatementNode
+    SourceSpan span) : AstNodeBase, IStatementNode
 {
     public IExpressionNode Condition => condition;
     public IStatementNode ThenBranch => thenBranch;
     public IStatementNode? ElseBranch => elseBranch;
-    public SourceSpan Span => span;
+    public override SourceSpan Span => span;
 
-    public string ToPrintable()
+    public override string ToPrintable()
     {
         return $"if ({Condition}) {{\n{ThenBranch}\n}}{(ElseBranch is null ? "" : $"else {{\n{ElseBranch}\n}}")}";
     }

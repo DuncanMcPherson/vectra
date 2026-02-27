@@ -2,10 +2,10 @@
 
 namespace VectraCompiler.AST.Models.Declarations;
 
-public class EnterDirectiveNode(string spaceName, SourceSpan span) : IAstNode
+public class EnterDirectiveNode(string spaceName, SourceSpan span) : AstNodeBase, IAstNode
 {
     public string SpaceName { get; } = spaceName;
-    public SourceSpan Span { get; } = span;
+    public override SourceSpan Span { get; } = span;
     
-    public string ToPrintable() => $"enter {SpaceName}";
+    public override string ToPrintable() => $"enter {SpaceName}";
 }

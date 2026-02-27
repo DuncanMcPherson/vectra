@@ -2,13 +2,13 @@
 
 namespace VectraCompiler.AST.Models.Expressions;
 
-public class UnaryExpressionNode(string op, IExpressionNode operand, SourceSpan span) : IExpressionNode
+public class UnaryExpressionNode(string op, IExpressionNode operand, SourceSpan span) : AstNodeBase, IExpressionNode
 {
     public string Operator { get; } = op;
     public IExpressionNode Operand { get; } = operand;
-    public SourceSpan Span { get; } = span;
+    public override SourceSpan Span { get; } = span;
 
-    public string ToPrintable()
+    public override string ToPrintable()
     {
         return $"{Operator}{Operand}";
     }

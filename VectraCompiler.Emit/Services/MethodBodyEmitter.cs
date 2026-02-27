@@ -200,10 +200,30 @@ public sealed class MethodBodyEmitter
             case BoundUnaryExpression un:
                 EmitUnary(un);
                 break;
+            case BoundNewArrayExpression newArr:
+                EmitNewArray(newArr);
+                break;
+            case BoundIndexAccessExpression indexAccess:
+                EmitIndexAccess(indexAccess);
+                break;
             default:
                 throw new InvalidOperationException(
                     $"Unsupported expression kind in emit: {node.GetType().Name}");
         }
+    }
+
+    private void EmitNewArray(BoundNewArrayExpression newArr)
+    {
+        var typeIndex = _pool.AddElementType(newArr.ArrayType.ElementType);
+        EmitExpression(newArr.Count);
+        _buffer.Emit(Opcode.NEW_ARR, typeIndex);
+    }
+
+    private void EmitIndexAccess(BoundIndexAccessExpression indexAccess)
+    {
+        EmitExpression(indexAccess.Target);
+        EmitExpression(indexAccess.Index);
+        _buffer.Emit(Opcode.LOAD_ELEM);
     }
     
     private void EmitLiteral(BoundLiteralExpression node)
@@ -279,6 +299,12 @@ public sealed class MethodBodyEmitter
                     ? _pool.AddField(f)
                     : _pool.AddProperty((PropertySymbol)member.Member);
                 _buffer.Emit(Opcode.STORE_MEMBER, memberIndex);
+                break;
+            case BoundIndexAccessExpression indexTarget:
+                _buffer.Emit(Opcode.DUP);
+                EmitExpression(indexTarget.Target);
+                EmitExpression(indexTarget.Index);
+                _buffer.Emit(Opcode.STORE_ELEM);
                 break;
             default:
                 throw new InvalidOperationException(

@@ -1,0 +1,7 @@
+space Vectra.Test.Games;
+
+class Fortnite {
+    bool Play(Player player) {
+        return player.Age >= 25;
+    }
+}

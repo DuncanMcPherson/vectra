@@ -178,7 +178,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             WhileStatementNode w => BindWhileStatement(w, ctx),
             ForStatementNode f => BindForStatement(f, ctx),
             TryStatementNode t => BindTryStatement(t, ctx),
-            ThrowStatementNode t => BindThrowStatement(t, ctx),
+            AbortStatementNode t => BindThrowStatement(t, ctx),
             _ => BindBadStatement(node, ctx)
         };
     }
@@ -248,7 +248,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         return new BoundTryStatement(node.Span, tryBlock, catchClause, finallyBlock);
     }
 
-    private BoundStatement BindThrowStatement(ThrowStatementNode node, BindContext ctx)
+    private BoundStatement BindThrowStatement(AbortStatementNode node, BindContext ctx)
     {
         var expr = BindExpression(node.Expression, ctx);
         return new BoundThrowStatement(node.Span, expr);
@@ -371,6 +371,8 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
             MemberAccessExpressionNode n => BindMemberAccess(n, ctx),
             NewExpressionNode n => BindNewExpression(n, ctx),
             UnaryExpressionNode n => BindUnary(n, ctx),
+            NewArrayExpressionNode n => BindNewArray(n, ctx),
+            IndexAccessExpressionNode n => BindIndexAccess(n, ctx),
             _ => BindBadExpression(node, ctx)
         };
     }
@@ -379,6 +381,32 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
     {
         ctx.Diagnostics.Error(ErrorCode.IllegalExpression, $"Unsupported expression kind: {node.GetType().Name}");
         return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+    }
+
+    private BoundExpression BindNewArray(NewArrayExpressionNode node, BindContext ctx)
+    {
+        var elementType = ResolveType(node.ElementTypeName, ctx);
+        var arrayType = BuiltInTypeSymbol.ArrayOf(elementType);
+        var count = BindExpression(node.CountExpression, ctx.WithExpectedType(BuiltInTypeSymbol.Number));
+        if (!ReferenceEquals(count.Type, BuiltInTypeSymbol.Number))
+            ctx.Diagnostics.Error(ErrorCode.TypeMismatch, "Array size must be of type 'number'");
+        return new BoundNewArrayExpression(node.Span, arrayType, count);
+    }
+
+    private BoundExpression BindIndexAccess(IndexAccessExpressionNode node, BindContext ctx)
+    {
+        var target = BindExpression(node.Target, ctx);
+        if (target.Type is not ArrayTypeSymbol arrayType)
+        {
+            ctx.Diagnostics.Error(ErrorCode.IllegalAccess,
+                $"Cannot index into non-array type '{target.Type.Name}'");
+            return new BoundErrorExpression(node.Span, BuiltInTypeSymbol.Error);
+        }
+
+        var index = BindExpression(node.Index, ctx.WithExpectedType(BuiltInTypeSymbol.Number));
+        if (!ReferenceEquals(index.Type, BuiltInTypeSymbol.Number))
+            ctx.Diagnostics.Error(ErrorCode.TypeMismatch, "Array index must be of type 'number'");
+        return new BoundIndexAccessExpression(node.Span, target, index, arrayType.ElementType);
     }
 
     private BoundExpression BindLiteral(LiteralExpressionNode node, BindContext ctx)
@@ -564,6 +592,12 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
 
     private TypeSymbol ResolveType(string typeName, BindContext ctx)
     {
+        if (typeName.EndsWith("[]"))
+        {
+            var elementTypeName = typeName[..^2];
+            var elementType = ResolveType(elementTypeName, ctx);
+            return BuiltInTypeSymbol.ArrayOf(elementType);
+        }
         var candidates = ctx.Scope.Lookup(typeName);
         if (candidates.Count > 0)
         {

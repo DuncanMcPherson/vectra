@@ -3,14 +3,14 @@ using VectraCompiler.Core;
 
 namespace VectraCompiler.AST.Models.Statements;
 
-public sealed class ThrowStatementNode(
+public sealed class AbortStatementNode(
     IExpressionNode expression,
-    SourceSpan span) : IStatementNode
+    SourceSpan span) : AstNodeBase, IStatementNode
 {
     public IExpressionNode Expression { get; } = expression;
-    public SourceSpan Span { get; } = span;
+    public override SourceSpan Span { get; } = span;
 
-    public string ToPrintable()
+    public override string ToPrintable()
     {
         return $"abort {Expression};";
     }
