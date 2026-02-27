@@ -60,6 +60,7 @@ jobs:
             "VectraCompiler/VectraCompiler.csproj",
             "VectraCompiler.AST/VectraCompiler.AST.csproj",
             "VectraCompiler.Bind/VectraCompiler.Bind.csproj",
+            "VectraCompiler.Core/VectraCompiler.Core.csproj",
           ]
 
           for path in paths:
@@ -99,6 +100,7 @@ jobs:
         run: |
           dotnet pack VectraCompiler.AST/VectraCompiler.AST.csproj -c Release -o out/nupkg --no-build
           dotnet pack VectraCompiler.Bind/VectraCompiler.Bind.csproj -c Release -o out/nupkg --no-build
+          dotnet pack VectraCompiler.Core/VectraCompiler.Core.csproj -c Release -o out/nupkg --no-build
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
