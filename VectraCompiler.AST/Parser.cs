@@ -9,10 +9,11 @@ using VectraCompiler.Core.Errors;
 
 namespace VectraCompiler.AST;
 
-public sealed class Parser(List<Token> tokens, string file)
+    public sealed class Parser(List<Token> tokens, string file)
 {
     private int _position;
     private readonly List<Diagnostic> _diagnostics = new();
+    private readonly List<Token> _tokens = tokens.Where(t => t.Type is not TokenType.Whitespace and not TokenType.Comment).ToList();
 
     public ParseResult Parse()
     {
@@ -158,10 +159,8 @@ public sealed class Parser(List<Token> tokens, string file)
             nameToken.Value,
             members,
             new SourceSpan(
-                nameToken.Position.Line,
-                nameToken.Position.Column,
-                PreviousOrPeek().Position.Line,
-                PreviousOrPeek().Position.Column
+                nameToken.Position,
+                PreviousOrPeek().Position
             ));
     }
 
@@ -263,10 +262,8 @@ public sealed class Parser(List<Token> tokens, string file)
             parameters,
             body,
             new SourceSpan(
-                classToken.Position.Line,
-                classToken.Position.Column,
-                PreviousOrPeek().Position.Line,
-                PreviousOrPeek().Position.Column
+                classToken.Position,
+                PreviousOrPeek().Position
             ));
     }
 
@@ -901,13 +898,13 @@ public sealed class Parser(List<Token> tokens, string file)
     #region Utility
 
     private bool IsAtEnd() => Peek().Type == TokenType.EndOfFile;
-    private Token Peek() => tokens[_position];
-    private Token? PeekNext() => _position + 1 < tokens.Count ? tokens[_position + 1] : null;
-    private Token? PeekOffset(int offset) => _position + offset < tokens.Count ? tokens[_position + offset] : null;
+    private Token Peek() => _tokens[_position];
+    private Token? PeekNext() => _position + 1 < _tokens.Count ? _tokens[_position + 1] : null;
+    private Token? PeekOffset(int offset) => _position + offset < _tokens.Count ? _tokens[_position + offset] : null;
 
-    private Token Advance() => tokens[_position++];
+    private Token Advance() => _tokens[_position++];
 
-    private Token Previous() => tokens[_position - 1];
+    private Token Previous() => _tokens[_position - 1];
 
     private Token PreviousOrPeek()
     {

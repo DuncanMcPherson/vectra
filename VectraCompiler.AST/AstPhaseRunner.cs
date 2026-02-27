@@ -53,7 +53,13 @@ public static class AstPhaseRunner
                         var lexer = new Lexer();
                         var sourceString = await File.ReadAllTextAsync(file, ct);
                         var tokens = lexer.ReadTokens(sourceString);
-                        var parser = new Parser(tokens, file);
+                        if (!tokens.Ok)
+                        {
+                            db.AddRange(tokens.Diagnostics.Items);
+                            continue;
+                        }
+
+                        var parser = new Parser(tokens.Value!, file);
                         var parseResult = parser.Parse();
                         moduleAst.Files.Add(parseResult);
                         modParseTask.Increment(1);

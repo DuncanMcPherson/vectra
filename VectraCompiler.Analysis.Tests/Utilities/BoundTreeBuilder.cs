@@ -9,8 +9,8 @@ namespace VectraCompiler.Analysis.Tests.Utilities;
 public static class BoundTreeBuilder
 {
     public static readonly SourceSpan Dummy = new(
-        new TokenPosition(1, 1),
-        new TokenPosition(1, 1));
+        new TokenPosition(1, 1, 0),
+        new TokenPosition(1, 1, 0));
 
     public static BoundBlockStatement Block(params BoundStatement[] stmts)
         => new(Dummy, stmts);

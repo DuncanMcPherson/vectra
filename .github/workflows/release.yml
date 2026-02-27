@@ -56,29 +56,34 @@ jobs:
           import os, xml.etree.ElementTree as ET
 
           version = os.environ['VERSION']
-          path = "VectraCompiler/VectraCompiler.csproj"
+          paths = [
+            "VectraCompiler/VectraCompiler.csproj",
+            "VectraCompiler.AST/VectraCompiler.AST.csproj",
+            "VectraCompiler.Bind/VectraCompiler.Bind.csproj",
+          ]
 
-          tree = ET.parse(path)
-          root = tree.getroot()
+          for path in paths:
+            tree = ET.parse(path)
+            root = tree.getroot()
 
-          ns = ""
-          if root.tag.startswith("{"):
-            ns = root.tag.split("}")[0] + "}"
-          def find_or_create(parent, tag):
-            el = parent.find(f"{ns}{tag}")
-            if el is None:
-              el = ET.SubElement(parent, f"{ns}{tag}")
-            return el
-          pg = root.find(f"{ns}PropertyGroup")
-          if pg is None:
-            pg = ET.SubElement(root, f"{ns}PropertyGroup")
-          find_or_create(pg, "Version").text = version
-          find_or_create(pg, "AssemblyVersion").text = version
-          find_or_create(pg, "FileVersion").text = version
-          find_or_create(pg, "InformationalVersion").text = version
+            ns = ""
+            if root.tag.startswith("{"):
+              ns = root.tag.split("}")[0] + "}"
+            def find_or_create(parent, tag):
+              el = parent.find(f"{ns}{tag}")
+              if el is None:
+                el = ET.SubElement(parent, f"{ns}{tag}")
+              return el
+            pg = root.find(f"{ns}PropertyGroup")
+            if pg is None:
+              pg = ET.SubElement(root, f"{ns}PropertyGroup")
+            find_or_create(pg, "Version").text = version
+            find_or_create(pg, "AssemblyVersion").text = version
+            find_or_create(pg, "FileVersion").text = version
+            find_or_create(pg, "InformationalVersion").text = version
 
-          tree.write(path, encoding="utf-8", xml_declaration=True)
-          print(f"Stamped {path} with version {version}")
+            tree.write(path, encoding="utf-8", xml_declaration=True)
+            print(f"Stamped {path} with version {version}")
           PY
       - name: Publish CLI
         run: |
@@ -90,6 +95,10 @@ jobs:
           
           (cd out && zip -r vectra-win-x64.zip win-x64)
           (cd out && zip -r vectra-linux-x64.zip linux-x64)
+      - name: Package NuGet packages
+        run: |
+          dotnet pack VectraCompiler.AST/VectraCompiler.AST.csproj -c Release -o out/nupkg --no-build
+          dotnet pack VectraCompiler.Bind/VectraCompiler.Bind.csproj -c Release -o out/nupkg --no-build
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -97,6 +106,7 @@ jobs:
           path: |
             out/vectra-win-x64.zip
             out/vectra-linux-x64.zip
+            out/nupkg/*.nupkg
   release:
     name: CreateGitHub release
     runs-on: ubuntu-latest
@@ -110,6 +120,12 @@ jobs:
         with:
           name: release-artifacts
           path: out
+      - name: Publish to GitHub packages
+        run: |
+          dotnet nuget push out/nupkg/*.nupkg \
+          --api-key ${{ secrets.GITHUB_TOKEN }} \
+          --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+          --skip-duplicate
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

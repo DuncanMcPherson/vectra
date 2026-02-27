@@ -120,7 +120,7 @@ public static class TestHelper
     {
         var lexer = new VectraCompiler.AST.Lexing.Lexer();
         var tokens = lexer.ReadTokens(source);
-        var parser = new VectraCompiler.AST.Parser(tokens, filePath);
+        var parser = new VectraCompiler.AST.Parser(tokens.Value!, filePath);
         var parseResult = parser.Parse();
         
         var module = new VectraAstModule { ModuleName = moduleName };

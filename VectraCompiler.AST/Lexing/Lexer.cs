@@ -1,5 +1,7 @@
 using System.Text;
 using VectraCompiler.AST.Lexing.Models;
+using VectraCompiler.Core;
+using VectraCompiler.Core.Errors;
 
 namespace VectraCompiler.AST.Lexing;
 
@@ -14,6 +16,9 @@ public class Lexer
     private int _position;
     private int _line;
     private int _column;
+    private int _offset;
+    
+    private DiagnosticBag _diagnostics = new();
 
     /// <summary>
     /// Living list of Keywords that are supported
@@ -79,7 +84,7 @@ public class Lexer
     /// </summary>
     /// <param name="source">Raw text of a VEC file</param>
     /// <returns>A <see cref="List{T}"/> of <see cref="Token"/></returns>
-    public List<Token> ReadTokens(string source)
+    public Result<List<Token>> ReadTokens(string source)
     {
         EnsureClean();
         _source = source;
@@ -90,8 +95,9 @@ public class Lexer
             if (token != null)
                 _tokens!.Add(token);
         }
-        _tokens!.Add(new(TokenType.EndOfFile, "\0", new(_line, _column)));
-        return _tokens;
+        var endPos = GetCurrentPosition();
+        _tokens!.Add(new(TokenType.EndOfFile, "\0", new(endPos, endPos)));
+        return _diagnostics.HasErrors ? Result<List<Token>>.Fail(_diagnostics) : Result<List<Token>>.Pass(_tokens, _diagnostics);
     }
 
     /// <summary>
@@ -100,19 +106,47 @@ public class Lexer
     /// <returns>A <see cref="Token"/></returns>
     private Token? GetToken()
     {
-        SkipWhitespaceAndComments();
+        var (token, isTrivia) = ReadTrivia();
+        if (token != null)
+            return token;
+
         if (IsAtEnd())
             return null;
-        var start = _position;
-        var line = _line;
-        var column = _column;
+        var startPos = GetCurrentPosition();
         var c = Advance();
 
         if (char.IsLetter(c) || c == '_')
-            return ReadIdentOrKeyword(start, line, column);
+            return ReadIdentOrKeyword(startPos);
         if (char.IsDigit(c))
-            return ReadNumber(start, line, column);
-        return c == '"' ? ReadString(line, column) : ReadSymbolOrOperator(c, line, column);
+            return ReadNumber(startPos);
+        return c == '"' ? ReadString(startPos) : ReadSymbolOrOperator(c, startPos);
+    }
+
+    private (Token? token, bool isTrivia) ReadTrivia()
+    {
+        var startPos = GetCurrentPosition();
+        var c = Peek();
+        if (char.IsWhiteSpace(c))
+        {
+            while (char.IsWhiteSpace(Peek()))
+            {
+                Advance();
+            }
+            var lexeme = _source![startPos.Offset.._offset];
+            return (new Token(TokenType.Whitespace, lexeme, new SourceSpan(startPos, GetCurrentPosition())), true);
+        }
+        
+        if (c == '/' && PeekNext() == '/')
+        {
+            while (Peek() != '\n' && !IsAtEnd())
+            {
+                Advance();
+            }
+            var lexeme = _source![startPos.Offset.._offset];
+            return (new Token(TokenType.Comment, lexeme, new SourceSpan(startPos, GetCurrentPosition())), true);
+        }
+
+        return (null, false);
     }
 
     /// <summary>
@@ -122,16 +156,16 @@ public class Lexer
     /// <param name="line">The line at which this token starts</param>
     /// <param name="column">The column within the line at which this token starts</param>
     /// <returns>A <see cref="Token"/> with type <see cref="TokenType"/>.Identifier or <see cref="TokenType"/>.Keyword</returns>
-    private Token ReadIdentOrKeyword(int start, int line, int column)
+    private Token ReadIdentOrKeyword(TokenPosition start)
     {
         while (!IsAtEnd() && (char.IsLetterOrDigit(Peek()) || Peek() == '_'))
         {
             Advance();
         }
 
-        var lexeme = _source![start.._position];
+        var lexeme = _source![start.Offset.._offset];
         var type = IsKeyword(lexeme) ? TokenType.Keyword : TokenType.Identifier;
-        return new(type, lexeme, new(line, column));
+        return new(type, lexeme, new(start, GetCurrentPosition()));
     }
 
     /// <summary>
@@ -139,11 +173,9 @@ public class Lexer
     ///
     /// <remarks>This will only read one decimal, number-like symbols (IP Addresses) should be entered as strings</remarks>
     /// </summary>
-    /// <param name="start">The position in the file at the start of this token</param>
-    /// <param name="line">The line at which this token starts</param>
-    /// <param name="column">The column within the line at which this token starts</param>
+    /// <param name="start">The starting position of the token</param>
     /// <returns>A token with type <see cref="TokenType"/>.Number</returns>
-    private Token ReadNumber(int start, int line, int column)
+    private Token ReadNumber(TokenPosition start)
     {
         var hasSeenDecimal = false;
         while (!IsAtEnd() && (char.IsDigit(Peek()) || Peek() == '.'))
@@ -156,18 +188,17 @@ public class Lexer
             Advance();
         }
 
-        var lexeme = _source![start.._position];
-        return new(TokenType.Number, lexeme, new(line, column));
+        var lexeme = _source![start.Offset.._offset];
+        return new(TokenType.Number, lexeme, new(start, GetCurrentPosition()));
     }
 
     /// <summary>
     /// Reads a token as a string or text literal
     /// </summary>
-    /// <param name="line">The line at which this token starts</param>
-    /// <param name="column">The column within the line at which this token starts</param>
+    /// <param name="start">The starting position of the token</param>
     /// <returns>A token with type <see cref="TokenType"/>.String</returns>
     /// <exception cref="Exception">Throws an exception if the end of the file is reached before seeing an unescaped double quote</exception>
-    private Token ReadString(int line, int column)
+    private Token ReadString(TokenPosition start)
     {
         var builder = new StringBuilder();
 
@@ -197,21 +228,21 @@ public class Lexer
 
         if (IsAtEnd())
         {
-            throw new Exception($"Unterminated string at line {line}, column {column}.");
+            _diagnostics.Error(ErrorCode.UnterminatedStringLiteral, $"Unterminated string at line {start.Line}, column {start.Column}", line: start.Line, column: start.Column);
+            return new(TokenType.String, builder.ToString(), new(start, GetCurrentPosition()));
         }
 
         Advance();
-        return new(TokenType.String, builder.ToString(), new(line, column));
+        return new(TokenType.String, builder.ToString(), new(start, GetCurrentPosition()));
     }
 
     /// <summary>
     /// Reads a token as a symbol or an operator
     /// </summary>
     /// <param name="c">The first character of the operator or symbol.</param>
-    /// <param name="line">The line at which theis token starts</param>
-    /// <param name="column">The column within the line at which this token starts</param>
+    /// <param name="start">The starting position of the token</param>
     /// <returns>A token with type <see cref="TokenType"/>.Symbol or <see cref="TokenType"/>.Operator</returns>
-    private Token ReadSymbolOrOperator(char c, int line, int column)
+    private Token ReadSymbolOrOperator(char c, TokenPosition start)
     {
         var lexeme = c.ToString();
         var next = Peek();
@@ -223,7 +254,7 @@ public class Lexer
         }
 
         var type = IsOperator(lexeme) ? TokenType.Operator : TokenType.Symbol;
-        return new(type, lexeme, new(line, column));
+        return new(type, lexeme, new(start, GetCurrentPosition()));
     }
 
     /// <summary>
@@ -236,9 +267,12 @@ public class Lexer
         _position = 0;
         _line = 1;
         _column = 1;
+        _offset = 0;
     }
     
     #region Utilities
+    private TokenPosition GetCurrentPosition() => new(_line, _column, _offset);
+
     /// <summary>
     /// Checks if our current position is at the end of the file
     /// </summary>
@@ -276,6 +310,7 @@ public class Lexer
             _column += 3;
         }
         _position++;
+        _offset++;
         return current;
     }
 

@@ -9,5 +9,7 @@ public enum TokenType
     Symbol,
     Operator,
     CollectionOperator,
+    Whitespace,
+    Comment,
     EndOfFile
 }
