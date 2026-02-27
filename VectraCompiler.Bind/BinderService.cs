@@ -1,3 +1,4 @@
+using VectraCompiler.AST.Models.Declarations;
 using VectraCompiler.AST.Models.Expressions;
 using VectraCompiler.AST.Models.Statements;
 using VectraCompiler.Bind.Bodies;
@@ -7,10 +8,11 @@ using VectraCompiler.Bind.Models;
 using VectraCompiler.Bind.Models.Symbols;
 using VectraCompiler.Core;
 using VectraCompiler.Core.Errors;
+using VectraCompiler.Core.Logging;
 
 namespace VectraCompiler.Bind;
 
-public sealed class BinderService(DeclarationBindResult declarations, DiagnosticBag diagnostics)
+internal sealed class BinderService(DeclarationBindResult declarations, DiagnosticBag diagnostics)
 {
     private static readonly BoundBinaryOperator[] Ops =
     [
@@ -62,7 +64,47 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         new(BoundBinaryOperatorKind.Add, BuiltInTypeSymbol.String, BuiltInTypeSymbol.Bool, BuiltInTypeSymbol.String),
     ];
 
-    public BoundBlockStatement BindConstructorBody(
+    public void BindBodies(out Dictionary<Symbol, BoundBlockStatement> bodies,
+        out Dictionary<Symbol, SlotAllocator> allocators)
+    {
+        bodies = new Dictionary<Symbol, BoundBlockStatement>();
+        allocators = new Dictionary<Symbol, SlotAllocator>();
+        foreach (var (typeSymbol, typeNode) in declarations.TypeNodesBySymbol)
+        {
+            if (typeNode is not ClassDeclarationNode cdn)
+                continue;
+            foreach (var memberNode in cdn.Members)
+            {
+                if (!declarations.SymbolsByNode.TryGetValue(memberNode, out var sym))
+                    continue;
+                switch (sym)
+                {
+                    case MethodSymbol m when memberNode is MethodDeclarationNode mdn:
+                    {
+                        Logger.LogTrace($"Binding method body for {mdn.Name} in type {typeSymbol.FullName}");
+                        bodies[sym] = BindMethodBody(m, typeSymbol, mdn.Body, out var allocator);
+                        allocators[sym] = allocator;
+                        break;
+                    }
+                    case ConstructorSymbol c when memberNode is ConstructorDeclarationNode cn:
+                    {
+                        Logger.LogTrace($"Binding constructor body for {typeSymbol.FullName}");
+                        bodies[sym] = BindConstructorBody(c, typeSymbol, cn.Body, out var allocator);
+                        allocators[sym] = allocator;
+                        break;
+                    }
+                    case FieldSymbol f when memberNode is FieldDeclarationNode fdn:
+                    {
+                        Logger.LogTrace($"Binding field initializer for {fdn.Name} in type {typeSymbol.FullName}");
+                        f.Initializer = BindFieldInitializer(f, typeSymbol, fdn.Initializer);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private BoundBlockStatement BindConstructorBody(
         ConstructorSymbol ctor,
         NamedTypeSymbol containingType,
         BlockStatementNode body,
@@ -98,7 +140,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         return BindBlock(body, ctx);
     }
 
-    public BoundExpression? BindFieldInitializer(
+    private BoundExpression? BindFieldInitializer(
         FieldSymbol field,
         NamedTypeSymbol containingType,
         IExpressionNode? initializer)
@@ -122,7 +164,7 @@ public sealed class BinderService(DeclarationBindResult declarations, Diagnostic
         return BindExpression(initializer, ctx);
     }
 
-    public BoundBlockStatement BindMethodBody(
+    private BoundBlockStatement BindMethodBody(
         MethodSymbol method,
         NamedTypeSymbol containingType,
         BlockStatementNode body,
