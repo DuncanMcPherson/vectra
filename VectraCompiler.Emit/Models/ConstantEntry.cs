@@ -25,4 +25,6 @@ public sealed class ConstantEntry
 
     internal static ConstantEntry ForNumber(ushort index, double value)
         => new(index, ConstantKind.Number, value.ToString(CultureInfo.InvariantCulture), value);
+    internal static ConstantEntry ForBuiltInType(ushort index, ConstantKind kind, string name)
+        => new(index, kind, name);
 }

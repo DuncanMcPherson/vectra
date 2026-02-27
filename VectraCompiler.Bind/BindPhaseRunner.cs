@@ -318,6 +318,12 @@ public static class BindPhaseRunner
 
     private static TypeSymbol ResolveType(Scope lookupScope, string typeName, DiagnosticBag db)
     {
+        if (typeName.EndsWith("[]"))
+        {
+            var elementTypeName = typeName[..^2];
+            var elementType = ResolveType(lookupScope, elementTypeName, db);
+            return BuiltInTypeSymbol.ArrayOf(elementType);
+        }
         var matches = lookupScope.Lookup(typeName);
         var type = matches.OfType<TypeSymbol>().FirstOrDefault();
         if (type is null)

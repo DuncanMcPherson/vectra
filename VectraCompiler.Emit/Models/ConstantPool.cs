@@ -15,6 +15,15 @@ public sealed class ConstantPool
         => GetOrAdd(_symbolIndex, type.FullName, () =>
             ConstantEntry.ForSymbol((ushort)_entries.Count, ConstantKind.Type, type.FullName));
 
+    public ushort AddElementType(TypeSymbol type)
+    {
+        if (type is NamedTypeSymbol named)
+            return AddType(named);
+        
+        return GetOrAdd(_symbolIndex, type.Name, () =>
+            ConstantEntry.ForBuiltInType((ushort)_entries.Count, ConstantKind.Type, type.Name));
+    }
+
     public ushort AddConstructor(ConstructorSymbol ctor)
         => GetOrAdd(_symbolIndex, CtorKey(ctor), () =>
             ConstantEntry.ForSymbol((ushort)_entries.Count, ConstantKind.Constructor, CtorKey(ctor)));
