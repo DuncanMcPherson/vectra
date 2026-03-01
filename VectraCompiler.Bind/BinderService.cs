@@ -12,7 +12,7 @@ using VectraCompiler.Core.Logging;
 
 namespace VectraCompiler.Bind;
 
-internal sealed class BinderService(DeclarationBindResult declarations, DiagnosticBag diagnostics)
+public sealed class BinderService(DeclarationBindResult declarations, DiagnosticBag diagnostics)
 {
     private static readonly BoundBinaryOperator[] Ops =
     [

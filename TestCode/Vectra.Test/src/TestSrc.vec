@@ -5,44 +5,44 @@ space Vectra.Test;
 class Program {
     void Main(string[] args) {
         attempt {
-        Print("What is your name? ");
-        let name = ReadLine();
-        PrintLine("Hello " + name + "!");
-        Print("How old are you? ");
-        number age = ReadInt();
-        let attemptCount = 1;
-        let attemptHistory = new number[4];
-        attemptHistory[0] = age;
-        while (age < 18) {
-            PrintLine("You must be at least 18 years old to play this game.");
+            Print("What is your name? ");
+            let name = ReadLine();
+            PrintLine("Hello " + name + "!");
             Print("How old are you? ");
-            age = ReadInt();
-            attemptHistory[attemptCount] = age;
-            attemptCount = attemptCount + 1;
-            if (attemptCount > 3) {
-                abort new Error("You have failed to meet the minimum age requirement.");
+            number age = ReadInt();
+            let attemptCount = 1;
+            let attemptHistory = new number[4];
+            attemptHistory[0] = age;
+            while (age <= 18) {
+                PrintLine("You must be at least 18 years old to play this game.");
+                Print("How old are you? ");
+                age = ReadInt();
+                attemptHistory[attemptCount] = age;
+                attemptCount = attemptCount + 1;
+                if (attemptCount > 3) {
+                    abort new Error("You have failed to meet the minimum age requirement.");
+                }
             }
-        }
-        let historicAge = attemptHistory[attemptCount - 1];
-        PrintLine("You are " + historicAge + " years old.");
-        let player = new Player(age, name);
-        PrintLine("Creating observer...");
-        let observer = new Observer();
-        PrintLine("Observer created.");
-        observer.Observe(player);
-        Print("How many rounds will you play? ");
-        number rounds = ReadInt();
-        number percent = 0;
-        let gamePlayed = new Fortnite();
-        for (let i = 0; i < rounds; i = i + 1) {
-            if (gamePlayed.Play(player)) {
-                player.Win();
-            } else {
-                player.Lose();
+            let historicAge = attemptHistory[attemptCount - 1];
+            PrintLine("You are " + historicAge + " years old.");
+            let player = new Player(age, name);
+            PrintLine("Creating observer...");
+            let observer = new Observer();
+            PrintLine("Observer created.");
+            observer.Observe(player);
+            Print("How many rounds will you play? ");
+            number rounds = ReadInt();
+            number percent = 0;
+            let gamePlayed = new Fortnite();
+            for (let i = 0; i < rounds; i = i + 1) {
+                if (gamePlayed.Play(player)) {
+                    player.Win();
+                } else {
+                    player.Lose();
+                }
+                percent = player.GetVictoryPercentage();
+                PrintLine(player.Name + " has won " + percent + "% of the time");
             }
-            percent = player.GetVictoryPercentage();
-            PrintLine(player.Name + " has won " + percent + "% of the time");
-        }
         } recover (Error e) {
             PrintLine("An Error Occurred: " + e.Message);
         } debrief {
