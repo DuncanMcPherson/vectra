@@ -9,11 +9,13 @@ using VectraCompiler.Core.Errors;
 
 namespace VectraCompiler.AST;
 
-    public sealed class Parser(List<Token> tokens, string file)
+public sealed class Parser(List<Token> tokens, string file)
 {
     private int _position;
     private readonly List<Diagnostic> _diagnostics = new();
-    private readonly List<Token> _tokens = tokens.Where(t => t.Type is not TokenType.Whitespace and not TokenType.Comment).ToList();
+
+    private readonly List<Token> _tokens =
+        tokens.Where(t => t.Type is not TokenType.Whitespace and not TokenType.Comment).ToList();
 
     public ParseResult Parse()
     {
@@ -31,21 +33,33 @@ namespace VectraCompiler.AST;
     private List<EnterDirectiveNode> ParseEnterDirectives()
     {
         var directives = new List<EnterDirectiveNode>();
-        while (!IsAtEnd() && Check("enter"))
+        try
         {
-            var start = Advance();
-            var name = new StringBuilder();
-            var nameToken = Consume(TokenType.Identifier, "Expected space name after 'enter'");
-            name.Append(nameToken.Value);
-            while (!IsAtEnd() && Match("."))
+            while (!IsAtEnd() && Check("enter"))
             {
-                var part = Consume(TokenType.Identifier, "Expected identifier after '.'");
-                name.Append('.').Append(part.Value);
+                var start = Advance();
+                var name = new StringBuilder();
+                var nameToken = Consume(TokenType.Identifier, "Expected space name after 'enter'");
+                name.Append(nameToken.Value);
+                while (!IsAtEnd() && Match("."))
+                {
+                    var part = Consume(TokenType.Identifier, "Expected identifier after '.'");
+                    name.Append('.').Append(part.Value);
+                }
+
+                Expect(";", "Expected ';' after space name");
+                directives.Add(new EnterDirectiveNode(name.ToString(),
+                    new SourceSpan(start.Position, PreviousOrPeek().Position)));
             }
-            Expect(";", "Expected ';' after space name");
-            directives.Add(new EnterDirectiveNode(name.ToString(), new SourceSpan(start.Position, PreviousOrPeek().Position)));
+
+            return directives;
         }
-        return directives;
+        catch (Exception e)
+        {
+            if (e is ParseError)
+                SynchronizeTopLevel();
+            return directives;
+        }
     }
 
     private SpaceDeclarationNode ParseSpace(SpaceDeclarationNode? parent = null)
@@ -168,7 +182,8 @@ namespace VectraCompiler.AST;
     {
         // TODO: add support for modifiers
         if (!Check(TokenType.Identifier, TokenType.Keyword))
-            throw Error(ErrorCode.ExpectedTokenMissing, "Expected identifier or keyword at start of member declaration", Peek());
+            throw Error(ErrorCode.ExpectedTokenMissing, "Expected identifier or keyword at start of member declaration",
+                Peek());
 
         var typeToken = Advance();
 
@@ -203,7 +218,8 @@ namespace VectraCompiler.AST;
                     var start = Peek().Position;
                     var typeToken = ConsumeTypeName("Expected parameter type");
                     var nameToken = Consume(TokenType.Identifier, "Expected parameter name");
-                    parameters.Add(new VParameter(nameToken.Value, typeToken, new SourceSpan(start, nameToken.Position)));
+                    parameters.Add(
+                        new VParameter(nameToken.Value, typeToken, new SourceSpan(start, nameToken.Position)));
                 } while (Match(","));
 
                 // Common recovery for your example: if '{' appears, treat ')' as missing.
@@ -328,7 +344,7 @@ namespace VectraCompiler.AST;
             else
                 Report(ErrorCode.ExpectedTokenMissing, "Expected '}' to close method body", Peek());
         }
-        
+
         var body = new BlockStatementNode(new SourceSpan(bodyStart.Position, PreviousOrPeek().Position))
         {
             Statements = statements
@@ -398,7 +414,8 @@ namespace VectraCompiler.AST;
                     hasSetter = true;
                     break;
                 default:
-                    throw Error(ErrorCode.UnexpectedToken, $"Unexpected token: '{accessorType.Value}' in property body", accessorType);
+                    throw Error(ErrorCode.UnexpectedToken, $"Unexpected token: '{accessorType.Value}' in property body",
+                        accessorType);
             }
 
             // Missing ';' recovery if next is '}'.
@@ -436,11 +453,11 @@ namespace VectraCompiler.AST;
             return ParseReturnStatement();
         if (Check("let"))
             return ParseVariableDeclarationStatement(false);
-        if (Check("if"))      return ParseIfStatement();
-        if (Check("while"))   return ParseWhileStatement();
-        if (Check("for"))     return ParseForStatement();
-        if (Check("attempt"))     return ParseTryStatement();
-        if (Match("abort"))   return ParseThrowStatement();
+        if (Check("if")) return ParseIfStatement();
+        if (Check("while")) return ParseWhileStatement();
+        if (Check("for")) return ParseForStatement();
+        if (Check("attempt")) return ParseTryStatement();
+        if (Match("abort")) return ParseThrowStatement();
         if (Check(TokenType.Identifier, TokenType.Keyword) && PeekNext()!.Type == TokenType.Identifier)
             return ParseVariableDeclarationStatement(true);
         return ParseExpressionStatement();
@@ -459,7 +476,9 @@ namespace VectraCompiler.AST;
             Advance();
             elseClause = ParseBlockOrStatement();
         }
-        return new IfStatementNode(condition, then, elseClause, new SourceSpan(start.Position, PreviousOrPeek().Position));
+
+        return new IfStatementNode(condition, then, elseClause,
+            new SourceSpan(start.Position, PreviousOrPeek().Position));
     }
 
     private WhileStatementNode ParseWhileStatement()
@@ -483,16 +502,19 @@ namespace VectraCompiler.AST;
                                  PeekNext()!.Type == TokenType.Identifier))
             {
                 init = ParseVariableDeclarationStatement(Check(TokenType.Keyword) && Peek().Value != "let");
-            } else
+            }
+            else
                 init = ParseExpressionStatement();
         }
         else Expect(";", "Expected ';'");
+
         var condition = Check(";") ? null : ParseExpression();
         Expect(";", "Expected ';' after for condition");
         var increment = Check(")") ? null : ParseExpression();
         Expect(")", "Expected ')' after for clauses");
         var body = ParseBlockOrStatement();
-        return new ForStatementNode(init, condition, increment, body, new SourceSpan(start.Position, PreviousOrPeek().Position));
+        return new ForStatementNode(init, condition, increment, body,
+            new SourceSpan(start.Position, PreviousOrPeek().Position));
     }
 
     private TryStatementNode ParseTryStatement()
@@ -513,7 +535,8 @@ namespace VectraCompiler.AST;
             }
 
             var catchBody = ParseBlock();
-            catchClause = new CatchClauseNode(exType, exName, catchBody, new SourceSpan(catchStart.Position, PreviousOrPeek().Position));
+            catchClause = new CatchClauseNode(exType, exName, catchBody,
+                new SourceSpan(catchStart.Position, PreviousOrPeek().Position));
         }
 
         BlockStatementNode? finallyBlock = null;
@@ -522,11 +545,12 @@ namespace VectraCompiler.AST;
             Advance();
             finallyBlock = ParseBlock();
         }
-        
+
         if (catchClause is null && finallyBlock is null)
             Report(ErrorCode.ExpectedTokenMissing, "Expected 'recover' or 'debrief' after 'try'", Peek());
-        
-        return new TryStatementNode(tryBlock, catchClause, finallyBlock, new SourceSpan(start.Position, PreviousOrPeek().Position));
+
+        return new TryStatementNode(tryBlock, catchClause, finallyBlock,
+            new SourceSpan(start.Position, PreviousOrPeek().Position));
     }
 
     private AbortStatementNode ParseThrowStatement()
@@ -558,8 +582,10 @@ namespace VectraCompiler.AST;
             {
                 SynchronizeStatement();
             }
+
             if (_position == pos) Advance();
         }
+
         Consume("}", "Expected '}' to end block");
         return new BlockStatementNode(new SourceSpan(open.Position, PreviousOrPeek().Position)) { Statements = stmts };
     }
@@ -605,7 +631,8 @@ namespace VectraCompiler.AST;
             initializer = ParseExpression();
 
         if (!isExplicit && initializer is null)
-            throw Error(ErrorCode.InvalidVariableDeclaration, "Implicit variable declaration requires an initializer", typeToken);
+            throw Error(ErrorCode.InvalidVariableDeclaration, "Implicit variable declaration requires an initializer",
+                typeToken);
 
         // Missing ';' recovery if next is '}'.
         if (Check("}"))
@@ -716,7 +743,8 @@ namespace VectraCompiler.AST;
             TokenType.String => token.Value,
             TokenType.Keyword when token.Value == "true" => true,
             TokenType.Keyword when token.Value == "false" => false,
-            _ => throw Error(ErrorCode.UnexpectedToken, $"Unexpected token '{token.Value}' in literal expression", token)
+            _ => throw Error(ErrorCode.UnexpectedToken, $"Unexpected token '{token.Value}' in literal expression",
+                token)
         };
         return new LiteralExpressionNode(value, new SourceSpan(token.Position, Peek().Position));
     }
@@ -739,7 +767,11 @@ namespace VectraCompiler.AST;
             {
                 var index = ParseExpression();
                 Expect("]", "Expected ']' after index expression");
-                expr = new IndexAccessExpressionNode(expr, index, expr.Span with { EndLine = PreviousOrPeek().Position.Line, EndColumn = PreviousOrPeek().Position.Column });
+                expr = new IndexAccessExpressionNode(expr, index,
+                    expr.Span with
+                    {
+                        EndLine = PreviousOrPeek().Position.Line, EndColumn = PreviousOrPeek().Position.Column
+                    });
                 continue;
             }
 
@@ -764,7 +796,10 @@ namespace VectraCompiler.AST;
                 expr = new CallExpressionNode(
                     expr,
                     args,
-                    expr.Span with { EndLine = PreviousOrPeek().Position.Line, EndColumn = PreviousOrPeek().Position.Column });
+                    expr.Span with
+                    {
+                        EndLine = PreviousOrPeek().Position.Line, EndColumn = PreviousOrPeek().Position.Column
+                    });
 
                 continue;
             }
@@ -784,9 +819,10 @@ namespace VectraCompiler.AST;
             var count = ParseExpression();
             Expect("]", "Expected ']' after array size expression");
             var elementType = typeToken.Value;
-            return new NewArrayExpressionNode(elementType, count, new SourceSpan(token.Position, PreviousOrPeek().Position));
+            return new NewArrayExpressionNode(elementType, count,
+                new SourceSpan(token.Position, PreviousOrPeek().Position));
         }
-        
+
         Expect("(", "Expected '(' after type name");
 
         var args = new List<IExpressionNode>();
@@ -810,21 +846,21 @@ namespace VectraCompiler.AST;
 
     #region Recovery / Diagnostics
 
-    private void Report(ErrorCode code, string message, Token token)
+    private void Report(ErrorCode code, string message, Token startToken, Token? endToken = null)
     {
+        var end = endToken ?? startToken;
         _diagnostics.Add(new Diagnostic(
             code,
             Severity.Error,
             message,
-            Path.GetFileName(file),
-            token.Position.Line,
-            token.Position.Column
+            new SourceSpan(startToken.Position, end.Position),
+            Path.GetFileName(file)
         ));
     }
 
-    private ParseError Error(ErrorCode code, string message, Token token)
+    private ParseError Error(ErrorCode code, string message, Token startToken, Token? endToken = null)
     {
-        Report(code, message, token);
+        Report(code, message, startToken, endToken);
         return new ParseError(message);
     }
 
@@ -835,7 +871,7 @@ namespace VectraCompiler.AST;
     {
         while (!IsAtEnd())
         {
-            if (Check(TokenType.Keyword) && Peek().Value == "class")
+            if (Check(TokenType.Keyword) && (Peek().Value == "class" || Peek().Value == "space"))
                 return;
 
             // If we hit '}', it might close something above us; let callers handle it.
@@ -923,16 +959,24 @@ namespace VectraCompiler.AST;
     private void Expect(string lexeme, string errorMessage)
     {
         if (Match(lexeme)) return;
-        throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected '{lexeme}'", Peek());
+
+        var previous = Previous();
+        var errorStart = previous.Position with { Column = previous.Position.Column + previous.Value.Length };
+        var errorEnd = errorStart with { Column = errorStart.Column + lexeme.Length };
+        var diag = new Diagnostic(ErrorCode.ExpectedTokenMissing, Severity.Error,
+            $"{errorMessage}. Expected '{lexeme}'", new SourceSpan(errorStart, errorEnd), Path.GetFileName(file));
+        _diagnostics.Add(diag);
+        throw new ParseError(errorMessage);
     }
 
     private Token Consume(TokenType type, string errorMessage)
     {
         if (IsAtEnd())
-            throw Error(ErrorCode.UnexpectedEndOfFile, $"Expected token of type: {type}, but reached end of file.", PreviousOrPeek());
+            throw Error(ErrorCode.UnexpectedEndOfFile, $"Expected token of type: {type}, but reached end of file.",
+                PreviousOrPeek());
 
         if (Peek().Type != type)
-            throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected {type}", Peek());
+            throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected {type}", Previous(), Peek());
 
         return Advance();
     }
@@ -940,9 +984,10 @@ namespace VectraCompiler.AST;
     private Token Consume(string lexeme, string errorMessage)
     {
         if (IsAtEnd())
-            throw Error(ErrorCode.UnexpectedEndOfFile, $"Expected token: '{lexeme}', but reached end of file.", PreviousOrPeek());
+            throw Error(ErrorCode.UnexpectedEndOfFile, $"Expected token: '{lexeme}', but reached end of file.",
+                PreviousOrPeek());
         if (Peek().Value != lexeme)
-            throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected '{lexeme}'", Peek());
+            throw Error(ErrorCode.ExpectedTokenMissing, $"{errorMessage}. Expected '{lexeme}'", Previous(), Peek());
         return Advance();
     }
 

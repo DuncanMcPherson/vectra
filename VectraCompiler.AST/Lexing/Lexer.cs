@@ -228,7 +228,7 @@ public class Lexer
 
         if (IsAtEnd())
         {
-            _diagnostics.Error(ErrorCode.UnterminatedStringLiteral, $"Unterminated string at line {start.Line}, column {start.Column}", line: start.Line, column: start.Column);
+            _diagnostics.Error(ErrorCode.UnterminatedStringLiteral, $"Unterminated string at line {start.Line}, column {start.Column}", new (start, GetCurrentPosition()));
             return new(TokenType.String, builder.ToString(), new(start, GetCurrentPosition()));
         }
 

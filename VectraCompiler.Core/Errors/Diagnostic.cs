@@ -13,9 +13,8 @@ public record Diagnostic(
     ErrorCode Code,
     Severity Severity,
     string Message,
-    string? File = null,
-    int? Line = null,
-    int? Column = null)
+    SourceSpan? Span = null,
+    string? File = null)
 {
     public string CodeString => Code.ToCodeString();
 }
@@ -40,10 +39,9 @@ public sealed class DiagnosticBag
             _items.Add(diagnostic);
     }
 
-    public DiagnosticBag Error(ErrorCode code, string message, string? file = null, int? line = null, int? column = null) =>
-        Add(new(code, Severity.Error, message, file, line, column));
-    public DiagnosticBag Error(ErrorCode code, string message, SourceSpan span) => Error(code, message, null, span.StartLine, span.StartColumn);
-    public DiagnosticBag Warning(ErrorCode code, string message, string? file = null, int? line = null, int? column = null) =>
-        Add(new(code, Severity.Warning, message, file, line, column));
-    public DiagnosticBag Warning(ErrorCode code, string message, SourceSpan span) => Warning(code, message, null, span.StartLine, span.StartColumn);
+    public DiagnosticBag Error(ErrorCode code, string message, SourceSpan? span = null, string? file = null) =>
+        Add(new(code, Severity.Error, message, span, file));
+    public DiagnosticBag Warning(ErrorCode code, string message, SourceSpan? span = null, string? file = null) =>
+        Add(new(code, Severity.Warning, message, span, file));
+    public DiagnosticBag Warning(ErrorCode code, string message, SourceSpan span) => Warning(code, message, span, null);
 }

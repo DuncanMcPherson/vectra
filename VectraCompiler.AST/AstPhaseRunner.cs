@@ -61,6 +61,10 @@ public static class AstPhaseRunner
 
                         var parser = new Parser(tokens.Value!, file);
                         var parseResult = parser.Parse();
+                        if (parseResult.HasErrors)
+                        {
+                            db.AddRange(parseResult.Diagnostics);
+                        }
                         moduleAst.Files.Add(parseResult);
                         modParseTask.Increment(1);
                     }
@@ -70,6 +74,10 @@ public static class AstPhaseRunner
                 }
 
                 var errorCount = db.Items.Count(x => x.Severity == Severity.Error);
+                foreach (var error in db.Items)
+                {
+                    Logger.LogError($"{error.Code.ToCodeString()} - {error.Message} at {error.Span!.StartLine}:{error.Span!.StartColumn}");
+                }
                 Logger.LogInfo($"Parsing completed with {errorCount} error{(errorCount != 1 ? "s" : "")}.");
                 return db.HasErrors ? Result<VectraAstPackage>.Fail(db) : Result<VectraAstPackage>.Pass(package, db);
             });
